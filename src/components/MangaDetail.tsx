@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { X, Bookmark, EyeOff, BookOpen, ExternalLink } from 'lucide-react'
 import { client } from '../api'
 import { StarRating } from './StarRating'
@@ -10,6 +10,7 @@ interface MangaDetailProps {
   manga: Manga | null
   onClose: () => void
   onRead: () => void
+  onTagClick?: (tag: string) => void
 }
 
 function formatBytes(bytes: number | null | undefined) {
@@ -30,8 +31,20 @@ function formatDate(ts: number | string | null | undefined) {
   return isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN')
 }
 
-export function MangaDetail({ manga, onClose, onRead }: MangaDetailProps) {
+export function MangaDetail({ manga, onClose, onRead, onTagClick }: MangaDetailProps) {
   const qc = useQueryClient()
+  const mangaId = manga?.id
+
+  const { data: tagMeta } = useQuery({
+    queryKey: ['manga-tags', mangaId],
+    queryFn: async () => {
+      if (!mangaId) return {}
+      const res = await client.api.mangas[mangaId].tags.get()
+      if (res.error) throw new Error(String(res.error.value))
+      return res.data as Record<string, Record<string, { name?: string }>>
+    },
+    enabled: Boolean(mangaId)
+  })
 
   const metaMutation = useMutation({
     mutationFn: async (body: { mark?: boolean; hiddenBook?: boolean }) => {
@@ -169,7 +182,7 @@ export function MangaDetail({ manga, onClose, onRead }: MangaDetailProps) {
             <div>
               <span className="text-sm text-neutral-500">标签</span>
               <div className="mt-2">
-                <TagCloud tags={manga.tags} />
+                <TagCloud tags={manga.tags} tagMeta={tagMeta} onTagClick={onTagClick} />
               </div>
             </div>
           </div>

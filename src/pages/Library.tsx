@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useLocation } from 'wouter'
+import { useState, useEffect } from 'react'
+import { useLocation, useSearch } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '../api'
 import { SearchFilter } from '../components/SearchFilter'
@@ -15,11 +15,19 @@ export function Library() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Manga | null>(null)
+  const search = useSearch()
+  const [activeTag, setActiveTag] = useState(() => new URLSearchParams(search).get('tag') || '')
+
+  useEffect(() => {
+    const tag = new URLSearchParams(search).get('tag') || ''
+    setActiveTag(tag)
+    setPage(1)
+  }, [search])
 
   const pageSize = 24
 
   const { data: listData, isLoading } = useQuery({
-    queryKey: ['mangas', q, category, sortBy, sortOrder, page],
+    queryKey: ['mangas', q, category, activeTag, sortBy, sortOrder, page],
     queryFn: async () => {
       const res = await client.api.mangas.list.get({
         $query: {
@@ -27,6 +35,7 @@ export function Library() {
           pageSize: String(pageSize),
           q,
           category,
+          tag: activeTag,
           sortBy,
           sortOrder
         }
@@ -58,6 +67,15 @@ export function Library() {
     setPage(1)
   }
 
+  const handleTagClick = (tag: string) => {
+    setSelected(null)
+    navigate(`/?tag=${encodeURIComponent(tag)}`)
+  }
+
+  const clearTag = () => {
+    navigate('/')
+  }
+
   return (
     <div className="min-h-screen bg-neutral-950">
       <SearchFilter
@@ -71,6 +89,16 @@ export function Library() {
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
       />
+
+      {activeTag && (
+        <div className="flex items-center gap-2 border-b border-neutral-800 bg-neutral-950/80 px-4 py-2 text-sm text-neutral-300 backdrop-blur">
+          <span className="text-neutral-500">标签过滤：</span>
+          <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-blue-300">{activeTag}</span>
+          <button onClick={clearTag} className="text-neutral-500 hover:text-neutral-200">
+            清除
+          </button>
+        </div>
+      )}
 
       <main className="p-4">
         {isLoading ? (
@@ -123,6 +151,7 @@ export function Library() {
             setSelected(null)
             navigate(`/reader/${selected.id}`)
           }}
+          onTagClick={handleTagClick}
         />
       )}
     </div>

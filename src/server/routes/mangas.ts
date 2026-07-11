@@ -4,6 +4,7 @@ import { db } from '../db.js'
 import { mangas } from '../schema.js'
 import { openZipForPage } from '../lib/zip.js'
 import { readCover } from '../lib/cover.js'
+import { buildTagMeta } from '../lib/tags.js'
 
 const SORT_FIELDS = [
   'date',
@@ -138,6 +139,20 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         return { error: 'Manga not found' }
       }
       return rows[0]
+    },
+    {
+      params: t.Object({ id: t.String() })
+    }
+  )
+  .get(
+    '/:id/tags',
+    async ({ params, set }) => {
+      const rows = await db.select({ tags: mangas.tags }).from(mangas).where(eq(mangas.id, params.id)).limit(1)
+      if (!rows[0]) {
+        set.status = 404
+        return { error: 'Manga not found' }
+      }
+      return buildTagMeta(rows[0].tags)
     },
     {
       params: t.Object({ id: t.String() })

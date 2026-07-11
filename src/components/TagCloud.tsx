@@ -2,6 +2,7 @@ import type { TagMap } from '../types'
 
 interface TagCloudProps {
   tags: TagMap | null | undefined
+  tagMeta?: Record<string, Record<string, { name?: string }>>
   onTagClick?: (tag: string) => void
   limit?: number
 }
@@ -17,7 +18,7 @@ const TAG_COLORS: Record<string, string> = {
   misc: 'bg-neutral-500/20 text-neutral-300 border-neutral-500/30'
 }
 
-export function TagCloud({ tags, onTagClick, limit }: TagCloudProps) {
+export function TagCloud({ tags, tagMeta, onTagClick, limit }: TagCloudProps) {
   if (!tags || Object.keys(tags).length === 0) return null
 
   const pairs = Object.entries(tags).flatMap(([cat, list]) =>
@@ -29,14 +30,18 @@ export function TagCloud({ tags, onTagClick, limit }: TagCloudProps) {
     <div className="flex flex-wrap gap-1.5">
       {visible.map(({ cat, tag }) => {
         const style = TAG_COLORS[cat] || TAG_COLORS.misc
+        const translated = tagMeta?.[cat]?.[tag]?.name
+        const label = translated ? `${cat}: ${translated}` : `${cat}: ${tag}`
+        const title = translated ? `${cat}: ${tag}` : undefined
         return (
           <button
             key={`${cat}:${tag}`}
             type="button"
+            title={title}
             onClick={() => onTagClick?.(tag)}
             className={`px-2 py-0.5 text-xs rounded border ${style} hover:opacity-80 transition`}
           >
-            {cat}: {tag}
+            {label}
           </button>
         )
       })}
