@@ -1,4 +1,4 @@
-import { openZipForPage } from './zip.js'
+import { openZipForPage } from './zip.ts'
 
 export async function readCover(coverPath: string | null | undefined, zipPath: string | null | undefined) {
   if (coverPath) {

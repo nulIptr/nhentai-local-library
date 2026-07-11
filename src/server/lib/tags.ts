@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { TagMap } from '../../types.js'
+import type { TagMap } from '../../types.ts'
 
 let tagNames: Record<string, Record<string, string>> | null = null
 let flatTagNames: Record<string, string> | null = null

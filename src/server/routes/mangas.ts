@@ -1,10 +1,11 @@
 import { Elysia, t } from 'elysia'
 import { eq, and, or, like, desc, asc, sql } from 'drizzle-orm'
-import { db } from '../db.js'
-import { mangas } from '../schema.js'
-import { openZipForPage } from '../lib/zip.js'
-import { readCover } from '../lib/cover.js'
-import { buildTagMeta } from '../lib/tags.js'
+import { db } from '../db.ts'
+import { mangas } from '../schema.ts'
+import { openZipForPage } from '../lib/zip.ts'
+import { readCover } from '../lib/cover.ts'
+import { buildTagMeta } from '../lib/tags.ts'
+import { scanLibrary } from '../lib/scan.ts'
 
 const SORT_FIELDS = [
   'date',
@@ -52,6 +53,23 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         .from(mangas)
         .where(and(eq(mangas.hiddenBook, false), eq(mangas.exist, true)))
       return rows.map((r) => r.category).filter(Boolean) as string[]
+    }
+  )
+  .post(
+    '/scan',
+    async ({ body, set }) => {
+      try {
+        const summary = await scanLibrary(body.libraryPath)
+        return summary
+      } catch (e) {
+        set.status = 400
+        return { error: e instanceof Error ? e.message : String(e) }
+      }
+    },
+    {
+      body: t.Object({
+        libraryPath: t.String()
+      })
     }
   )
   .get(
@@ -216,7 +234,11 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
 
       await db
         .update(mangas)
-        .set({ readCount: (rows[0].readCount || 0) + 1, mtime: new Date().toISOString() })
+        .set({
+          readCount: (rows[0].readCount || 0) + 1,
+          mtime: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
         .where(eq(mangas.id, params.id))
 
       const updated = await db.select().from(mangas).where(eq(mangas.id, params.id)).limit(1)
@@ -261,9 +283,11 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       if (typeof body.mark === 'boolean') update.mark = body.mark
       if (typeof body.hiddenBook === 'boolean') update.hiddenBook = body.hiddenBook
       if (typeof body.readCount === 'number') update.readCount = body.readCount
+      if (typeof body.currentPage === 'number') update.currentPage = Math.max(0, body.currentPage)
 
       if (Object.keys(update).length > 0) {
         update.mtime = new Date().toISOString()
+        update.updatedAt = new Date().toISOString()
         await db.update(mangas).set(update).where(eq(mangas.id, params.id))
       }
 
@@ -275,7 +299,8 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       body: t.Object({
         mark: t.Optional(t.Boolean()),
         hiddenBook: t.Optional(t.Boolean()),
-        readCount: t.Optional(t.Number())
+        readCount: t.Optional(t.Number()),
+        currentPage: t.Optional(t.Number())
       })
     }
   )

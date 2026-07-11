@@ -24,6 +24,9 @@ export const mangas = sqliteTable('Mangas', {
   mark: integer('mark', { mode: 'boolean' }),
   hiddenBook: integer('hiddenBook', { mode: 'boolean' }),
   readCount: integer('readCount'),
+  currentPage: integer('currentPage').default(0),
+  createdAt: text('createdAt'),
+  updatedAt: text('updatedAt'),
   exist: integer('exist', { mode: 'boolean' })
 })
 

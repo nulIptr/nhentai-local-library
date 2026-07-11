@@ -8,7 +8,7 @@
     "dev:client": "vite",
     "dev:server": "bun run --watch src/server/index.ts",
     "build": "tsc -b && vite build",
-    "start": "bun run build && bun run src/server/index.ts",
+    "start": "bun run scripts/migrate.ts && bun run scripts/sanitize-tags.ts && bun run build && bun run src/server/index.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

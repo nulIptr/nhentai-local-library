@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Metadata } from '../src/server/metadata/metadata.types.js'
+import type { Metadata } from '../src/server/metadata/metadata.types.ts'
 
 const root = process.cwd()
 const inputPath = join(root, 'src', 'server', 'metadata', 'db.html.json')

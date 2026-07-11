@@ -26,6 +26,9 @@ export interface Manga {
   mark: boolean | null
   hiddenBook: boolean | null
   readCount: number | null
+  currentPage: number | null
+  createdAt: string | null
+  updatedAt: string | null
   exist: boolean | null
 }
 

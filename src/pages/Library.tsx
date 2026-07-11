@@ -5,6 +5,7 @@ import { client } from '../api'
 import { SearchFilter } from '../components/SearchFilter'
 import { MangaCard } from '../components/MangaCard'
 import { MangaDetail } from '../components/MangaDetail'
+import { ScanButton } from '../components/ScanButton'
 import type { Manga, SortField } from '../types'
 
 export function Library() {
@@ -78,6 +79,11 @@ export function Library() {
 
   return (
     <div className="min-h-screen bg-neutral-950">
+      <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
+        <h1 className="text-lg font-semibold text-neutral-100">漫画图书馆</h1>
+        <ScanButton />
+      </header>
+
       <SearchFilter
         q={q}
         onQChange={handleSearch}

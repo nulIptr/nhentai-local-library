@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
-import { mangaRoutes } from './routes/mangas.js'
+import { mangaRoutes } from './routes/mangas.ts'
 
 const app = new Elysia()
   .use(cors())
