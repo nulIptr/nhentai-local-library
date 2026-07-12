@@ -119,7 +119,7 @@ export function Library() {
                   key={manga.id}
                   manga={manga}
                   onClick={() => setSelected(manga)}
-                  onRead={() => navigate(`/reader/${manga.id}`)}
+                  onRead={() => window.open(`/reader/${manga.id}`, '_blank')}
                 />
               ))}
             </div>
@@ -151,11 +151,11 @@ export function Library() {
 
       {selected && (
         <MangaDetail
-          manga={selected}
+          mangaId={selected.id}
           onClose={() => setSelected(null)}
           onRead={() => {
             setSelected(null)
-            navigate(`/reader/${selected.id}`)
+            window.open(`/reader/${selected.id}`, '_blank')
           }}
           onTagClick={handleTagClick}
         />

@@ -7,7 +7,8 @@ interface ReaderState {
   fit: FitMode
   scrollWidth: number
   progress: Record<string, number>
-  setMode: (mode: ReaderMode) => void
+  modeSetByUser: boolean
+  setMode: (mode: ReaderMode, byUser?: boolean) => void
   setFit: (fit: FitMode) => void
   setScrollWidth: (width: number) => void
   setProgress: (mangaId: string, page: number) => void
@@ -21,7 +22,8 @@ export const useReaderStore = create<ReaderState>()(
       fit: 'window',
       scrollWidth: 0.9,
       progress: {},
-      setMode: (mode) => set({ mode }),
+      modeSetByUser: false,
+      setMode: (mode, byUser = false) => set({ mode, modeSetByUser: byUser ? true : get().modeSetByUser }),
       setFit: (fit) => set({ fit }),
       setScrollWidth: (scrollWidth) => set({ scrollWidth }),
       setProgress: (mangaId, page) =>

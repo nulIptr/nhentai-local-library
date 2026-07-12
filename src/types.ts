@@ -1,5 +1,5 @@
 export interface TagMap {
-  [category: string]: string[]
+  [category: string]: string[] | string
 }
 
 export interface Manga {
@@ -30,6 +30,7 @@ export interface Manga {
   createdAt: string | null
   updatedAt: string | null
   exist: boolean | null
+  tagMeta?: Record<string, Record<string, { name?: string }>> | null
 }
 
 export interface MangaListResponse {

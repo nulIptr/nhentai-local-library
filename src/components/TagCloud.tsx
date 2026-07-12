@@ -21,9 +21,10 @@ const TAG_COLORS: Record<string, string> = {
 export function TagCloud({ tags, tagMeta, onTagClick, limit }: TagCloudProps) {
   if (!tags || Object.keys(tags).length === 0) return null
 
-  const pairs = Object.entries(tags).flatMap(([cat, list]) =>
-    list.map((tag) => ({ cat, tag }))
-  )
+  const pairs = Object.entries(tags).flatMap(([cat, list]) => {
+    const items = Array.isArray(list) ? list : typeof list === 'string' ? list.split(/\s+/) : []
+    return items.filter(Boolean).map((tag) => ({ cat, tag }))
+  })
   const visible = limit ? pairs.slice(0, limit) : pairs
 
   return (
@@ -31,8 +32,8 @@ export function TagCloud({ tags, tagMeta, onTagClick, limit }: TagCloudProps) {
       {visible.map(({ cat, tag }) => {
         const style = TAG_COLORS[cat] || TAG_COLORS.misc
         const translated = tagMeta?.[cat]?.[tag]?.name
-        const label = translated ? `${cat}: ${translated}` : `${cat}: ${tag}`
-        const title = translated ? `${cat}: ${tag}` : undefined
+        const label = translated || tag
+        const title = translated ? `${cat}: ${tag}` : `${cat}: ${tag}`
         return (
           <button
             key={`${cat}:${tag}`}

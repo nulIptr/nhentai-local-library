@@ -203,7 +203,12 @@ export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
   })
 
   const removedIds = existingRows
-    .filter((r) => r.filepath && !discoveredPaths.has(r.filepath))
+    .filter((r) => {
+      if (!r.filepath) return false
+      // 仅当记录在本次扫描目录范围内且未被发现时，才标记为不存在
+      if (!r.filepath.startsWith(resolvedLibrary)) return false
+      return !discoveredPaths.has(r.filepath)
+    })
     .map((r) => r.id)
 
   if (removedIds.length > 0) {

@@ -60,7 +60,6 @@ export function WebtoonScroller({
           <div
             key={i}
             data-page={i}
-            className="flex flex-col items-center"
             style={{ width: widthStyle }}
           >
             <img
@@ -69,7 +68,6 @@ export function WebtoonScroller({
               loading="lazy"
               className="w-full select-none"
             />
-            <span className="mt-1 text-[10px] text-neutral-600">{i + 1}</span>
           </div>
         ))}
       </div>

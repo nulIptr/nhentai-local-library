@@ -40,7 +40,7 @@ const SCROLL_WIDTHS = [
 export function Reader() {
   const { id } = useParams<{ id: string }>()
   const [, navigate] = useLocation()
-  const { mode, fit, scrollWidth, setMode, setFit, setScrollWidth, setProgress, getProgress } =
+  const { mode, fit, scrollWidth, modeSetByUser, setMode, setFit, setScrollWidth, setProgress, getProgress } =
     useReaderStore()
 
   const [currentPage, setCurrentPage] = useState(0)
@@ -87,6 +87,12 @@ export function Reader() {
       setPageInput(String(saved + 1))
     }
   }, [manga?.id])
+
+  useEffect(() => {
+    if (modeSetByUser) return
+    const isLandscape = window.innerWidth > window.innerHeight
+    setMode(isLandscape ? 'double' : 'single')
+  }, [])
 
   const pageCount = manga?.pageCount || 0
 
@@ -181,11 +187,7 @@ export function Reader() {
     const activePage = mode === 'double' ? currentPages[0] : currentPage
     setProgress(manga.id, activePage)
     setPageInput(String(activePage + 1))
-
-    const timer = setTimeout(() => {
-      progressMutation.mutate(activePage)
-    }, 1000)
-    return () => clearTimeout(timer)
+    progressMutation.mutate(activePage)
   }, [currentPage, currentSpread, mode, manga?.id])
 
   if (isLoading) {
@@ -219,8 +221,9 @@ export function Reader() {
       >
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => window.close()}
             className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+            title="关闭标签页"
           >
             <X size={20} />
           </button>
@@ -283,7 +286,7 @@ export function Reader() {
         <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs sm:gap-2">
           <select
             value={mode}
-            onChange={(e) => setMode(e.target.value as ReaderMode)}
+            onChange={(e) => setMode(e.target.value as ReaderMode, true)}
             className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
           >
             {MODES.map((m) => (

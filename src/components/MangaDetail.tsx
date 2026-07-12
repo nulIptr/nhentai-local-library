@@ -7,7 +7,7 @@ import { getPlaceholderCover, getPlaceholderTitle } from '../lib/placeholder'
 import type { Manga } from '../types'
 
 interface MangaDetailProps {
-  manga: Manga | null
+  mangaId: string
   onClose: () => void
   onRead: () => void
   onTagClick?: (tag: string) => void
@@ -31,14 +31,22 @@ function formatDate(ts: number | string | null | undefined) {
   return isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN')
 }
 
-export function MangaDetail({ manga, onClose, onRead, onTagClick }: MangaDetailProps) {
+export function MangaDetail({ mangaId, onClose, onRead, onTagClick }: MangaDetailProps) {
   const qc = useQueryClient()
-  const mangaId = manga?.id
+
+  const { data: manga, isLoading } = useQuery({
+    queryKey: ['manga', mangaId],
+    queryFn: async () => {
+      const res = await client.api.mangas[mangaId].get()
+      if (res.error) throw new Error(String(res.error.value))
+      return res.data as Manga
+    },
+    enabled: Boolean(mangaId)
+  })
 
   const { data: tagMeta } = useQuery({
     queryKey: ['manga-tags', mangaId],
     queryFn: async () => {
-      if (!mangaId) return {}
       const res = await client.api.mangas[mangaId].tags.get()
       if (res.error) throw new Error(String(res.error.value))
       return res.data as Record<string, Record<string, { name?: string }>>
@@ -48,29 +56,40 @@ export function MangaDetail({ manga, onClose, onRead, onTagClick }: MangaDetailP
 
   const metaMutation = useMutation({
     mutationFn: async (body: { mark?: boolean; hiddenBook?: boolean }) => {
-      if (!manga) throw new Error('No manga')
-      const res = await client.api.mangas[manga.id].meta.patch(body)
+      const res = await client.api.mangas[mangaId].meta.patch(body)
       if (res.error) throw new Error(String(res.error.value))
       return res.data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['mangas'] })
-      if (manga) qc.invalidateQueries({ queryKey: ['manga', manga.id] })
+      qc.invalidateQueries({ queryKey: ['manga', mangaId] })
     }
   })
 
   const rateMutation = useMutation({
     mutationFn: async (rating: number) => {
-      if (!manga) throw new Error('No manga')
-      const res = await client.api.mangas[manga.id].rate.post({ rating })
+      const res = await client.api.mangas[mangaId].rate.post({ rating })
       if (res.error) throw new Error(String(res.error.value))
       return res.data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['mangas'] })
-      if (manga) qc.invalidateQueries({ queryKey: ['manga', manga.id] })
+      qc.invalidateQueries({ queryKey: ['manga', mangaId] })
     }
   })
+
+  if (isLoading) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-8 text-neutral-400">
+          加载中...
+        </div>
+      </div>
+    )
+  }
 
   if (!manga) return null
 
@@ -147,10 +166,10 @@ export function MangaDetail({ manga, onClose, onRead, onTagClick }: MangaDetailP
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => metaMutation.mutate({ mark: !manga.mark })}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${
+                className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm ${
                   manga.mark
-                    ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-                    : 'bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-neutral-600'
+                    ? 'border-yellow-500/30 bg-yellow-500/20 text-yellow-300'
+                    : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                 }`}
               >
                 <Bookmark size={14} className={manga.mark ? 'fill-current' : ''} />
@@ -158,10 +177,10 @@ export function MangaDetail({ manga, onClose, onRead, onTagClick }: MangaDetailP
               </button>
               <button
                 onClick={() => metaMutation.mutate({ hiddenBook: !manga.hiddenBook })}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${
+                className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm ${
                   manga.hiddenBook
-                    ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                    : 'bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-neutral-600'
+                    ? 'border-red-500/30 bg-red-500/20 text-red-300'
+                    : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                 }`}
               >
                 <EyeOff size={14} />

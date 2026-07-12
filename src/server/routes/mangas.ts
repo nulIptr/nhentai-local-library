@@ -57,19 +57,20 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
   )
   .post(
     '/scan',
-    async ({ body, set }) => {
+    async ({ set }) => {
+      const libraryPath = process.env.LIBRARY_PATH
+      if (!libraryPath) {
+        set.status = 400
+        return { error: 'LIBRARY_PATH environment variable is not configured' }
+      }
+
       try {
-        const summary = await scanLibrary(body.libraryPath)
+        const summary = await scanLibrary(libraryPath)
         return summary
       } catch (e) {
         set.status = 400
         return { error: e instanceof Error ? e.message : String(e) }
       }
-    },
-    {
-      body: t.Object({
-        libraryPath: t.String()
-      })
     }
   )
   .get(
@@ -125,8 +126,13 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         .limit(pageSize)
         .offset((page - 1) * pageSize)
 
+      const itemsWithMeta = items.map((item) => ({
+        ...item,
+        tagMeta: buildTagMeta(item.tags)
+      }))
+
       return {
-        items,
+        items: itemsWithMeta,
         pagination: {
           page,
           pageSize,
@@ -212,7 +218,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       }
 
       try {
-        const { buffer, mime } = await openZipForPage(rows[0].filepath, params.index)
+        const { buffer, mime } = await openZipForPage(rows[0].filepath, Number(params.index))
         return new Response(new Uint8Array(buffer), { headers: { 'Content-Type': mime } })
       } catch (e) {
         set.status = 500

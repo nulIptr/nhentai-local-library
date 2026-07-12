@@ -58,8 +58,9 @@ export function buildTagMeta(tags: TagMap | null): Record<string, Record<string,
   const meta: Record<string, Record<string, { name?: string }>> = {}
   if (!tags) return meta
   for (const [namespace, list] of Object.entries(tags)) {
+    const items = Array.isArray(list) ? list : typeof list === 'string' ? list.split(/\s+/) : []
     const nsMeta: Record<string, { name?: string }> = {}
-    for (const tag of list) {
+    for (const tag of items.filter(Boolean)) {
       const translated = getTagName(namespace, tag)
       if (translated) {
         nsMeta[tag] = { name: translated }
