@@ -28,3 +28,4 @@ database.sqlite
 src/server/metadata/db.html.json
 src/server/metadata/tags.json
 data/covers
+.env

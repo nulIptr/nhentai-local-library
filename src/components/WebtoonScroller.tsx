@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getPageSrc } from '../lib/placeholder'
 
 interface WebtoonScrollerProps {
@@ -9,6 +9,8 @@ interface WebtoonScrollerProps {
   initialPage?: number
 }
 
+const PRELOAD_AHEAD = 5
+
 export function WebtoonScroller({
   mangaId,
   pageCount,
@@ -18,6 +20,7 @@ export function WebtoonScroller({
 }: WebtoonScrollerProps) {
   const observerRef = useRef<IntersectionObserver | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [currentPage, setCurrentPage] = useState(initialPage)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -28,6 +31,7 @@ export function WebtoonScroller({
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
         if (visible) {
           const page = Number(visible.target.getAttribute('data-page'))
+          setCurrentPage(page)
           onCurrentPageChange(page)
         }
       },
@@ -53,23 +57,28 @@ export function WebtoonScroller({
   return (
     <div
       ref={containerRef}
-      className="h-full w-full overflow-y-auto bg-black py-4"
+      className="h-full w-full overflow-y-auto overscroll-contain bg-black py-4 [-webkit-overflow-scrolling:touch]"
     >
       <div className="flex flex-col items-center gap-2">
-        {Array.from({ length: pageCount }).map((_, i) => (
-          <div
-            key={i}
-            data-page={i}
-            style={{ width: widthStyle }}
-          >
-            <img
-              src={getPageSrc(mangaId, i)}
-              alt={`Page ${i + 1}`}
-              loading="lazy"
-              className="w-full select-none"
-            />
-          </div>
-        ))}
+        {Array.from({ length: pageCount }).map((_, i) => {
+          const eager = i >= currentPage && i <= currentPage + PRELOAD_AHEAD
+          return (
+            <div
+              key={i}
+              data-page={i}
+              style={{ width: widthStyle }}
+              className="will-change-transform"
+            >
+              <img
+                src={getPageSrc(mangaId, i)}
+                alt={`Page ${i + 1}`}
+                loading={eager ? 'eager' : 'lazy'}
+                decoding={eager ? 'sync' : 'async'}
+                className="w-full select-none"
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

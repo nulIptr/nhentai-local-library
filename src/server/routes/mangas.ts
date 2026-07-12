@@ -1,3 +1,4 @@
+import { unlink } from 'node:fs/promises'
 import { Elysia, t } from 'elysia'
 import { eq, and, or, like, desc, asc, sql } from 'drizzle-orm'
 import { db } from '../db.ts'
@@ -308,5 +309,31 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         readCount: t.Optional(t.Number()),
         currentPage: t.Optional(t.Number())
       })
+    }
+  )
+  .delete(
+    '/:id',
+    async ({ params, set }) => {
+      const rows = await db.select().from(mangas).where(eq(mangas.id, params.id)).limit(1)
+      if (!rows[0]) {
+        set.status = 404
+        return { error: 'Manga not found' }
+      }
+
+      const filepath = rows[0].filepath
+      if (filepath) {
+        try {
+          await unlink(filepath)
+        } catch (e) {
+          // 文件可能已不存在，继续删除数据库记录
+          console.warn('Failed to delete manga file:', filepath, e)
+        }
+      }
+
+      await db.delete(mangas).where(eq(mangas.id, params.id))
+      return { success: true }
+    },
+    {
+      params: t.Object({ id: t.String() })
     }
   )

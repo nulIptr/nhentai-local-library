@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { X, Bookmark, EyeOff, BookOpen, ExternalLink } from 'lucide-react'
+import { X, Bookmark, EyeOff, BookOpen, ExternalLink, Trash2 } from 'lucide-react'
 import { client } from '../api'
 import { StarRating } from './StarRating'
 import { TagCloud } from './TagCloud'
@@ -77,6 +77,28 @@ export function MangaDetail({ mangaId, onClose, onRead, onTagClick }: MangaDetai
       qc.invalidateQueries({ queryKey: ['manga', mangaId] })
     }
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.api.mangas[mangaId].delete()
+      if (res.error) throw new Error(String(res.error.value))
+      return res.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mangas'] })
+      qc.invalidateQueries({ queryKey: ['categories'] })
+      onClose()
+    }
+  })
+
+  const handleDelete = () => {
+    const confirmed = window.confirm(
+      '确定要删除这本漫画吗？\n这会同时删除数据库记录和对应的 zip 文件，且不可恢复。'
+    )
+    if (confirmed) {
+      deleteMutation.mutate()
+    }
+  }
 
   if (isLoading) {
     return (
@@ -196,6 +218,14 @@ export function MangaDetail({ mangaId, onClose, onRead, onTagClick }: MangaDetai
                   <ExternalLink size={14} /> 来源
                 </a>
               )}
+              <button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                {deleteMutation.isPending ? '删除中...' : '删除'}
+              </button>
             </div>
 
             <div>

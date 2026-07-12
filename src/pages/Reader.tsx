@@ -221,9 +221,9 @@ export function Reader() {
       >
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
-            onClick={() => window.close()}
+            onClick={() => navigate('/')}
             className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-            title="关闭标签页"
+            title="返回列表"
           >
             <X size={20} />
           </button>
