@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  X,
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ChevronFirst,
@@ -225,7 +225,7 @@ export function Reader() {
               className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
               title="返回列表"
             >
-              <X size={20} />
+              <ArrowLeft size={20} />
             </button>
             <h1 className="max-w-[40vw] truncate text-xs text-neutral-200 sm:max-w-md sm:text-sm">
               {getPlaceholderTitle(manga)}
