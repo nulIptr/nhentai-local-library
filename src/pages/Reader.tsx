@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams, useLocation } from 'wouter'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ChevronLeft,
@@ -10,6 +10,7 @@ import {
   Settings2
 } from 'lucide-react'
 import { client } from '../api'
+import { StarRating } from '../components/StarRating'
 import { ReaderCanvas } from '../components/ReaderCanvas'
 import { WebtoonScroller } from '../components/WebtoonScroller'
 import { useReaderStore } from '../stores/readerStore'
@@ -40,6 +41,7 @@ const SCROLL_WIDTHS = [
 export function Reader() {
   const { id } = useParams<{ id: string }>()
   const [, navigate] = useLocation()
+  const qc = useQueryClient()
   const { mode, fit, scrollWidth, modeSetByUser, setMode, setFit, setScrollWidth, setProgress, getProgress } =
     useReaderStore()
 
@@ -73,6 +75,31 @@ export function Reader() {
     }
   })
 
+  const rateMutation = useMutation({
+    mutationFn: async (rating: number) => {
+      const res = await client.api.mangas[id].rate.post({ rating })
+      if (res.error) throw new Error(String(res.error.value))
+      return res.data as Manga
+    },
+    onMutate: async (rating) => {
+      await qc.cancelQueries({ queryKey: ['manga', id] })
+      const previous = qc.getQueryData<Manga>(['manga', id])
+      if (previous) {
+        qc.setQueryData(['manga', id], { ...previous, rating })
+      }
+      return { previous }
+    },
+    onError: (_err, _rating, context) => {
+      if (context?.previous) {
+        qc.setQueryData(['manga', id], context.previous)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['manga', id] })
+      qc.invalidateQueries({ queryKey: ['mangas'] })
+    }
+  })
+
   const [pageInput, setPageInput] = useState('1')
 
   useEffect(() => {
@@ -82,6 +109,7 @@ export function Reader() {
         manga.currentPage ?? getProgress(manga.id),
         (manga.pageCount || 1) - 1
       )
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentPage(saved)
       setCurrentSpread(Math.floor(saved / 2))
       setPageInput(String(saved + 1))
@@ -168,6 +196,7 @@ export function Reader() {
 
   useEffect(() => {
     if (mode === 'double') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSpread(Math.floor(currentPage / 2))
     } else {
       const pages = spreads[currentSpread]
@@ -189,6 +218,7 @@ export function Reader() {
     if (!manga) return
     const activePage = mode === 'double' ? currentPages[0] : currentPage
     setProgress(manga.id, activePage)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPageInput(String(activePage + 1))
     progressMutation.mutate(activePage)
   }, [currentPage, currentSpread, mode, manga?.id])
@@ -320,6 +350,16 @@ export function Reader() {
                   </option>
                 ))}
               </select>
+            )}
+
+            {manga && (
+              <div className="flex items-center gap-1 border-l border-white/10 pl-2">
+                <StarRating
+                  value={manga.rating || 0}
+                  onChange={(v) => rateMutation.mutate(v)}
+                  size={16}
+                />
+              </div>
             )}
 
             <button

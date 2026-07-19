@@ -4,13 +4,13 @@ import { client } from '../api'
 import { StarRating } from './StarRating'
 import { TagCloud } from './TagCloud'
 import { getPlaceholderCover, getPlaceholderTitle } from '../lib/placeholder'
-import type { Manga } from '../types'
+import type { Manga, TagMetadata } from '../types'
 
 interface MangaDetailProps {
   mangaId: string
   onClose: () => void
   onRead: () => void
-  onTagClick?: (tag: string) => void
+  onTagClick?: (namespace: string, tag: string) => void
 }
 
 function formatBytes(bytes: number | null | undefined) {
@@ -49,7 +49,7 @@ export function MangaDetail({ mangaId, onClose, onRead, onTagClick }: MangaDetai
     queryFn: async () => {
       const res = await client.api.mangas[mangaId].tags.get()
       if (res.error) throw new Error(String(res.error.value))
-      return res.data as Record<string, Record<string, { name?: string }>>
+      return res.data as Record<string, Record<string, TagMetadata>>
     },
     enabled: Boolean(mangaId)
   })

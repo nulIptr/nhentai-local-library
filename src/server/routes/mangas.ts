@@ -1,11 +1,12 @@
 import { unlink } from 'node:fs/promises'
 import { Elysia, t } from 'elysia'
 import { eq, and, or, like, desc, asc, sql, SQL } from 'drizzle-orm'
+
 import { db } from '../db.ts'
 import { mangas } from '../schema.ts'
 import { openZipForPage } from '../lib/zip.ts'
 import { readCover } from '../lib/cover.ts'
-import { buildTagMeta } from '../lib/tags.ts'
+import { buildTagMeta, NAMESPACE_ALIASES } from '../lib/tags.ts'
 import { runScanOnce } from '../lib/scan.ts'
 
 const SORT_FIELDS = [
@@ -43,6 +44,30 @@ function toOrderBy(field: SortField, order: 'asc' | 'desc') {
                   ? mangas.pageCount
                   : mangas.title
   return order === 'desc' ? desc(col) : asc(col)
+}
+
+function tagCondition(tagParam: string) {
+  const sep = tagParam.indexOf(':')
+  if (sep > 0) {
+    const ns = tagParam.slice(0, sep)
+    const val = tagParam.slice(sep + 1)
+    if (!val) return like(mangas.tags, `%${tagParam}%`)
+
+    const namespaces = new Set([ns])
+    if (NAMESPACE_ALIASES[ns]) namespaces.add(NAMESPACE_ALIASES[ns])
+    // 反向别名：如果用户搜索的是 canonical 命名空间，也包含指向它的别名
+    for (const [alias, canonical] of Object.entries(NAMESPACE_ALIASES)) {
+      if (canonical === ns) namespaces.add(alias)
+    }
+
+    const escaped = val.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const pattern = `%"${escaped}"%`
+    const conditions = [...namespaces].map((n) =>
+      sql`json_extract(${mangas.tags}, ${`$."${n}"`}) LIKE ${pattern}`
+    )
+    return or(...conditions)
+  }
+  return like(mangas.tags, `%${tagParam}%`)
 }
 
 export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
@@ -105,7 +130,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       }
 
       if (tag) {
-        conditions.push(like(mangas.tags, `%${tag}%`))
+        conditions.push(tagCondition(tag))
       }
 
       if (q) {
@@ -137,7 +162,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
 
       const itemsWithMeta = items.map((item) => ({
         ...item,
-        tagMeta: buildTagMeta(item.tags)
+        tagMeta: buildTagMeta(item.tags, { detail: false })
       }))
 
       return {
@@ -178,7 +203,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         )
       }
       if (query.category) conditions.push(like(mangas.category, query.category))
-      if (query.tag) conditions.push(like(mangas.tags, `%${query.tag}%`))
+      if (query.tag) conditions.push(tagCondition(query.tag))
 
       const where = and(...conditions.filter((c): c is SQL<unknown> => Boolean(c)))
       const totalResult = await db
@@ -207,7 +232,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
 
       const itemsWithMeta = items.map((item) => ({
         ...item,
-        tagMeta: buildTagMeta(item.tags)
+        tagMeta: buildTagMeta(item.tags, { detail: false })
       }))
 
       return {
@@ -246,7 +271,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         set.status = 404
         return { error: 'Manga not found' }
       }
-      return buildTagMeta(rows[0].tags)
+      return buildTagMeta(rows[0].tags, { detail: true })
     },
     {
       params: t.Object({ id: t.String() })

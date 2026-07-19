@@ -1,11 +1,14 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { mangaRoutes } from './routes/mangas.ts'
+import { tagRoutes } from './routes/tags.ts'
 import { runScanOnce } from './lib/scan.ts'
+import { startAutoRefresh } from './lib/metadata-refresh.ts'
 
 const app = new Elysia()
   .use(cors())
   .use(mangaRoutes)
+  .use(tagRoutes)
   .get('/*', async ({ params }) => {
     // 生产环境：托管 Vite 构建产物，未匹配文件回退到 index.html（SPA）
     const requested = params['*'] || 'index.html'
@@ -21,6 +24,8 @@ const app = new Elysia()
 export type App = typeof app
 
 console.log(`Server running at ${app.server?.hostname}:${app.server?.port}`)
+
+startAutoRefresh()
 
 const libraryPath = process.env.LIBRARY_PATH
 if (libraryPath) {

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useLocation, useSearch } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
-import { Shuffle } from 'lucide-react'
+import { Shuffle, BarChart3 } from 'lucide-react'
 import { client } from '../api'
 import { SearchFilter } from '../components/SearchFilter'
 import { MangaCard } from '../components/MangaCard'
@@ -96,13 +96,9 @@ export function Library() {
     navigate(qs ? `/?${qs}` : '/', { replace: true })
   }
 
-  const handleTagClick = (tag: string) => {
+  const handleTagClick = (namespace: string, tag: string) => {
     setSelected(null)
-    const next = new URLSearchParams(search)
-    next.set('tag', tag)
-    next.delete('page')
-    const qs = next.toString()
-    navigate(qs ? `/?${qs}` : '/', { replace: true })
+    setParams({ tag: `${namespace}:${tag}`, page: 1 })
   }
 
   const clearTag = () => {
@@ -163,6 +159,12 @@ export function Library() {
         <h1 className="text-lg font-semibold text-neutral-100">漫画图书馆</h1>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate('/tags')}
+            className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
+          >
+            <BarChart3 size={16} /> 标签分析
+          </button>
+          <button
             onClick={handleRandom}
             className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
           >
@@ -187,7 +189,22 @@ export function Library() {
       {activeTag && (
         <div className="flex items-center gap-2 border-b border-neutral-800 bg-neutral-950/80 px-4 py-2 text-sm text-neutral-300 backdrop-blur">
           <span className="text-neutral-500">标签过滤：</span>
-          <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-blue-300">{activeTag}</span>
+          {(() => {
+            const sep = activeTag.indexOf(':')
+            if (sep > 0) {
+              const ns = activeTag.slice(0, sep)
+              const val = activeTag.slice(sep + 1)
+              return (
+                <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-blue-300">
+                  <span className="text-blue-400/80">{ns}:</span>
+                  {val}
+                </span>
+              )
+            }
+            return (
+              <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-blue-300">{activeTag}</span>
+            )
+          })()}
           <button onClick={clearTag} className="text-neutral-500 hover:text-neutral-200">
             清除
           </button>

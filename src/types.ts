@@ -2,6 +2,50 @@ export interface TagMap {
   [category: string]: string[] | string
 }
 
+export interface TagLink {
+  label: string
+  url: string
+}
+
+export interface TagMetadata {
+  name: string
+  intro: string
+  links: TagLink[]
+}
+
+export interface TagAnalysis {
+  totalTags: number
+  taggedMangaCount: number
+  translationCoverage: number
+  namespaceCounts: Record<string, number>
+  topTags: Array<{
+    namespace: string
+    tag: string
+    name?: string
+    intro?: string
+    count: number
+  }>
+  cooccurrence: {
+    tags: Array<{ namespace: string; tag: string; name?: string; intro?: string }>
+    matrix: number[][]
+  }
+}
+
+export interface TagMetadataStatus {
+  loaded: boolean
+  version?: number
+  repo?: string
+  headSha?: string
+  headMessage?: string
+  updatedAt?: string
+  fileMtime?: string | null
+  lastRefreshSuccessAt?: string | null
+  lastRefreshError?: string | null
+  isRefreshing: boolean
+  namespaces: number
+  totalEntries: number
+}
+
 export interface Manga {
   id: string
   title: string | null
@@ -30,7 +74,7 @@ export interface Manga {
   createdAt: string | null
   updatedAt: string | null
   exist: boolean | null
-  tagMeta?: Record<string, Record<string, { name?: string }>> | null
+  tagMeta?: Record<string, Record<string, TagMetadata>> | null
 }
 
 export interface MangaListResponse {
