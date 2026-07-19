@@ -20,19 +20,39 @@ export function WebtoonScroller({
 }: WebtoonScrollerProps) {
   const observerRef = useRef<IntersectionObserver | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const onCurrentPageChangeRef = useRef(onCurrentPageChange)
+  const currentPageRef = useRef(initialPage)
+  const positionedMangaRef = useRef<string | null>(null)
   const [currentPage, setCurrentPage] = useState(initialPage)
 
   useEffect(() => {
+    onCurrentPageChangeRef.current = onCurrentPageChange
+  }, [onCurrentPageChange])
+
+  useEffect(() => {
     if (!containerRef.current) return
+    const visibility = new Map<Element, number>()
+
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+        entries.forEach((entry) => {
+          visibility.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0)
+        })
+
+        const visible = [...visibility.entries()].reduce<
+          { target: Element; ratio: number } | undefined
+        >((best, [target, ratio]) => {
+          if (ratio === 0 || (best && best.ratio >= ratio)) return best
+          return { target, ratio }
+        }, undefined)
+
         if (visible) {
           const page = Number(visible.target.getAttribute('data-page'))
+          if (page === currentPageRef.current) return
+
+          currentPageRef.current = page
           setCurrentPage(page)
-          onCurrentPageChange(page)
+          onCurrentPageChangeRef.current(page)
         }
       },
       { root: containerRef.current, threshold: 0.5 }
@@ -42,22 +62,28 @@ export function WebtoonScroller({
     items.forEach((item) => observerRef.current?.observe(item))
 
     return () => observerRef.current?.disconnect()
-  }, [mangaId, pageCount, onCurrentPageChange])
+  }, [mangaId, pageCount])
 
   useEffect(() => {
-    if (!containerRef.current || initialPage <= 0) return
-    const target = containerRef.current.querySelector(`[data-page="${initialPage}"]`)
-    if (target) {
-      target.scrollIntoView({ block: 'start' })
-    }
-  }, [initialPage])
+    const container = containerRef.current
+    if (!container || positionedMangaRef.current === mangaId) return
+
+    positionedMangaRef.current = mangaId
+    const page = Math.max(0, Math.min(initialPage, pageCount - 1))
+    const target = container.querySelector<HTMLElement>(`[data-page="${page}"]`)
+    if (!target) return
+
+    currentPageRef.current = page
+    setCurrentPage(page)
+    container.scrollTo({ top: target.offsetTop, behavior: 'smooth' })
+  }, [initialPage, mangaId, pageCount])
 
   const widthStyle = width <= 2 ? `${width * 100}vw` : `${width}%`
 
   return (
     <div
       ref={containerRef}
-      className="h-full w-full overflow-y-auto overscroll-contain bg-black py-4 [-webkit-overflow-scrolling:touch]"
+      className="h-full w-full scroll-smooth overflow-y-auto overscroll-contain bg-black py-4 [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"
     >
       <div className="flex flex-col items-center gap-2">
         {Array.from({ length: pageCount }).map((_, i) => {

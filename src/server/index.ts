@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { mangaRoutes } from './routes/mangas.ts'
+import { runScanOnce } from './lib/scan.ts'
 
 const app = new Elysia()
   .use(cors())
@@ -20,3 +21,22 @@ const app = new Elysia()
 export type App = typeof app
 
 console.log(`Server running at ${app.server?.hostname}:${app.server?.port}`)
+
+const libraryPath = process.env.LIBRARY_PATH
+if (libraryPath) {
+  console.log(`[auto-scan] Starting background scan of ${libraryPath}`)
+  runScanOnce(libraryPath, (summary) => {
+    console.log(
+      `[auto-scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
+    )
+    if (summary.errors.length > 0) {
+      console.error(`[auto-scan] Errors:`, summary.errors)
+    }
+  }).then((result) => {
+    if (!result.started) {
+      console.warn('[auto-scan] Skipped:', result.message)
+    }
+  })
+} else {
+  console.warn('[auto-scan] Skipped: LIBRARY_PATH environment variable is not configured')
+}

@@ -226,3 +226,26 @@ export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
 
   return summary
 }
+
+let isScanning = false
+
+export function runScanOnce(
+  libraryPath: string,
+  onComplete?: (summary: ScanSummary) => void
+): Promise<{ started: boolean; message?: string }> {
+  if (isScanning) {
+    return Promise.resolve({ started: false, message: '已有扫描任务正在进行中' })
+  }
+  isScanning = true
+  scanLibrary(libraryPath)
+    .then((summary) => {
+      onComplete?.(summary)
+    })
+    .catch((err) => {
+      console.error('[scan] Failed:', err instanceof Error ? err.message : String(err))
+    })
+    .finally(() => {
+      isScanning = false
+    })
+  return Promise.resolve({ started: true, message: '扫描已在后台开始' })
+}

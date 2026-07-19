@@ -105,7 +105,10 @@ export function Reader() {
   }, [pageCount])
 
   const currentPages = useMemo(() => {
-    if (mode === 'double') return spreads[currentSpread] || [currentPage]
+    if (mode === 'double') {
+      const spread = spreads[currentSpread] || [currentPage]
+      return [...spread].reverse()
+    }
     return [currentPage]
   }, [mode, currentSpread, currentPage, spreads])
 
@@ -211,127 +214,125 @@ export function Reader() {
 
   return (
     <div
-      className="relative h-screen w-full overflow-hidden bg-black"
+      className="flex h-screen w-full flex-col overflow-hidden bg-black"
       onDoubleClick={() => setShowToolbar((v) => !v)}
     >
-      <div
-        className={`absolute left-0 right-0 top-0 z-20 flex w-full flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/70 px-3 py-2 backdrop-blur transition-opacity sm:px-4 ${
-          showToolbar ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-        }`}
-      >
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => navigate('/')}
-            className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-            title="返回列表"
-          >
-            <X size={20} />
-          </button>
-          <h1 className="max-w-[40vw] truncate text-xs text-neutral-200 sm:max-w-md sm:text-sm">
-            {getPlaceholderTitle(manga)}
-          </h1>
-        </div>
+      {showToolbar && (
+        <div className="z-20 flex w-full flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/70 px-3 py-2 backdrop-blur sm:px-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+              title="返回列表"
+            >
+              <X size={20} />
+            </button>
+            <h1 className="max-w-[40vw] truncate text-xs text-neutral-200 sm:max-w-md sm:text-sm">
+              {getPlaceholderTitle(manga)}
+            </h1>
+          </div>
 
-        {mode !== 'scroll' && (
-          <div className="order-last flex w-full items-center justify-center gap-1 text-xs sm:order-none sm:w-auto">
-            <button
-              onClick={goFirst}
-              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-              title="首页"
-            >
-              <ChevronFirst size={18} />
-            </button>
-            <button
-              onClick={goPrev}
-              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-              title="上一页"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={pageInput}
-              onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+          {mode !== 'scroll' && (
+            <div className="order-last flex w-full items-center justify-center gap-1 text-xs sm:order-none sm:w-auto">
+              <button
+                onClick={goFirst}
+                className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+                title="首页"
+              >
+                <ChevronFirst size={18} />
+              </button>
+              <button
+                onClick={goPrev}
+                className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+                title="上一页"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const page = Number(pageInput) - 1
+                    if (!Number.isNaN(page)) goToPage(page)
+                  }
+                }}
+                onBlur={() => {
                   const page = Number(pageInput) - 1
                   if (!Number.isNaN(page)) goToPage(page)
-                }
-              }}
-              onBlur={() => {
-                const page = Number(pageInput) - 1
-                if (!Number.isNaN(page)) goToPage(page)
-              }}
-              className="w-12 rounded border border-white/10 bg-white/10 px-1 py-1 text-center text-neutral-200 outline-none"
-            />
-            <span className="text-neutral-400">/ {pageCount}</span>
-            <button
-              onClick={goNext}
-              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-              title="下一页"
-            >
-              <ChevronRight size={18} />
-            </button>
-            <button
-              onClick={goLast}
-              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-              title="尾页"
-            >
-              <ChevronLast size={18} />
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs sm:gap-2">
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as ReaderMode, true)}
-            className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
-          >
-            {MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-
-          {mode !== 'scroll' ? (
-            <select
-              value={fit}
-              onChange={(e) => setFit(e.target.value as FitMode)}
-              className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
-            >
-              {FITS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <select
-              value={scrollWidth}
-              onChange={(e) => setScrollWidth(Number(e.target.value))}
-              className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
-            >
-              {SCROLL_WIDTHS.map((w) => (
-                <option key={w.value} value={w.value}>
-                  {w.label}
-                </option>
-              ))}
-            </select>
+                }}
+                className="w-12 rounded border border-white/10 bg-white/10 px-1 py-1 text-center text-neutral-200 outline-none"
+              />
+              <span className="text-neutral-400">/ {pageCount}</span>
+              <button
+                onClick={goNext}
+                className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+                title="下一页"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <button
+                onClick={goLast}
+                className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+                title="尾页"
+              >
+                <ChevronLast size={18} />
+              </button>
+            </div>
           )}
 
-          <button
-            onClick={() => setShowToolbar((v) => !v)}
-            className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-          >
-            <Settings2 size={18} />
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs sm:gap-2">
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as ReaderMode, true)}
+              className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
+            >
+              {MODES.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
 
-      <div className="h-full w-full pt-11">
+            {mode !== 'scroll' ? (
+              <select
+                value={fit}
+                onChange={(e) => setFit(e.target.value as FitMode)}
+                className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
+              >
+                {FITS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={scrollWidth}
+                onChange={(e) => setScrollWidth(Number(e.target.value))}
+                className="rounded border border-white/10 bg-white/10 px-2 py-1 text-neutral-200 outline-none"
+              >
+                {SCROLL_WIDTHS.map((w) => (
+                  <option key={w.value} value={w.value}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <button
+              onClick={() => setShowToolbar((v) => !v)}
+              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+            >
+              <Settings2 size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="relative min-h-0 flex-1">
         {mode === 'scroll' ? (
           <WebtoonScroller
             mangaId={manga.id}

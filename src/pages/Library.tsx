@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useLocation, useSearch } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
+import { Shuffle } from 'lucide-react'
 import { client } from '../api'
 import { SearchFilter } from '../components/SearchFilter'
 import { MangaCard } from '../components/MangaCard'
@@ -8,32 +9,129 @@ import { MangaDetail } from '../components/MangaDetail'
 import { ScanButton } from '../components/ScanButton'
 import type { Manga, SortField } from '../types'
 
+const PAGE_SIZE = 24
+
+function getPaginationRange(current: number, total: number) {
+  if (total <= 1) return [1]
+  const pages: (number | string)[] = []
+  const showEllipsisStart = current > 3
+  const showEllipsisEnd = current < total - 2
+
+  pages.push(1)
+  if (showEllipsisStart) pages.push('...')
+
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  for (let i = start; i <= end; i++) {
+    if (showEllipsisStart && i === 2) continue
+    if (showEllipsisEnd && i === total - 1) continue
+    pages.push(i)
+  }
+
+  if (showEllipsisEnd) pages.push('...')
+  pages.push(total)
+  return pages
+}
+
 export function Library() {
   const [, navigate] = useLocation()
-  const [q, setQ] = useState('')
-  const [category, setCategory] = useState('')
-  const [sortBy, setSortBy] = useState<SortField>('date')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [page, setPage] = useState(1)
-  const [selected, setSelected] = useState<Manga | null>(null)
   const search = useSearch()
-  const [activeTag, setActiveTag] = useState(() => new URLSearchParams(search).get('tag') || '')
+  const [selected, setSelected] = useState<Manga | null>(null)
 
-  useEffect(() => {
-    const tag = new URLSearchParams(search).get('tag') || ''
-    setActiveTag(tag)
-    setPage(1)
-  }, [search])
+  const params = useMemo(() => new URLSearchParams(search), [search])
 
-  const pageSize = 24
+  const q = params.get('q') || ''
+  const category = params.get('category') || ''
+  const sortBy = (params.get('sortBy') as SortField) || 'date'
+  const sortOrder = (params.get('sortOrder') as 'asc' | 'desc') || 'desc'
+  const page = Math.max(1, Number(params.get('page') || '1'))
+  const activeTag = params.get('tag') || ''
+  const isRandom = params.has('random')
+
+  const setParams = (updates: Record<string, string | number | undefined>) => {
+    const next = new URLSearchParams(search)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === '') {
+        next.delete(key)
+      } else {
+        next.set(key, String(value))
+      }
+    })
+    const qs = next.toString()
+    navigate(qs ? `/?${qs}` : '/', { replace: true })
+  }
+
+  const handleSearch = (value: string) => {
+    setParams({ q: value, page: 1 })
+  }
+
+  const handleCategoryChange = (value: string) => {
+    setParams({ category: value, page: 1 })
+  }
+
+  const handleSortByChange = (value: SortField) => {
+    setParams({ sortBy: value })
+  }
+
+  const handleSortOrderChange = (value: 'asc' | 'desc') => {
+    setParams({ sortOrder: value })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setParams({ page: newPage })
+  }
+
+  const handleRandom = () => {
+    const next = new URLSearchParams(search)
+    next.set('random', String(Date.now()))
+    next.delete('page')
+    navigate(`/?${next.toString()}`, { replace: true })
+  }
+
+  const clearRandom = () => {
+    const next = new URLSearchParams(search)
+    next.delete('random')
+    next.delete('page')
+    const qs = next.toString()
+    navigate(qs ? `/?${qs}` : '/', { replace: true })
+  }
+
+  const handleTagClick = (tag: string) => {
+    setSelected(null)
+    const next = new URLSearchParams(search)
+    next.set('tag', tag)
+    next.delete('page')
+    const qs = next.toString()
+    navigate(qs ? `/?${qs}` : '/', { replace: true })
+  }
+
+  const clearTag = () => {
+    const next = new URLSearchParams(search)
+    next.delete('tag')
+    next.delete('page')
+    const qs = next.toString()
+    navigate(qs ? `/?${qs}` : '/', { replace: true })
+  }
 
   const { data: listData, isLoading } = useQuery({
-    queryKey: ['mangas', q, category, activeTag, sortBy, sortOrder, page],
+    queryKey: ['mangas', q, category, activeTag, sortBy, sortOrder, page, isRandom ? params.get('random') : ''],
     queryFn: async () => {
+      if (isRandom) {
+        const res = await client.api.mangas.random.get({
+          $query: {
+            pageSize: String(PAGE_SIZE),
+            q,
+            category,
+            tag: activeTag
+          }
+        })
+        if (res.error) throw new Error(String(res.error.value))
+        return res.data
+      }
       const res = await client.api.mangas.list.get({
         $query: {
           page: String(page),
-          pageSize: String(pageSize),
+          pageSize: String(PAGE_SIZE),
           q,
           category,
           tag: activeTag,
@@ -57,31 +155,21 @@ export function Library() {
 
   const mangas = listData?.items || []
   const pagination = listData?.pagination
-
-  const handleSearch = (value: string) => {
-    setQ(value)
-    setPage(1)
-  }
-
-  const handleCategoryChange = (value: string) => {
-    setCategory(value)
-    setPage(1)
-  }
-
-  const handleTagClick = (tag: string) => {
-    setSelected(null)
-    navigate(`/?tag=${encodeURIComponent(tag)}`)
-  }
-
-  const clearTag = () => {
-    navigate('/')
-  }
+  const pageRange = pagination ? getPaginationRange(page, pagination.totalPages) : []
 
   return (
     <div className="min-h-screen bg-neutral-950">
       <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
         <h1 className="text-lg font-semibold text-neutral-100">漫画图书馆</h1>
-        <ScanButton />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRandom}
+            className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
+          >
+            <Shuffle size={16} /> 随便看看
+          </button>
+          <ScanButton />
+        </div>
       </header>
 
       <SearchFilter
@@ -91,9 +179,9 @@ export function Library() {
         onCategoryChange={handleCategoryChange}
         categories={categories || []}
         sortBy={sortBy}
-        onSortByChange={setSortBy}
+        onSortByChange={handleSortByChange}
         sortOrder={sortOrder}
-        onSortOrderChange={setSortOrder}
+        onSortOrderChange={handleSortOrderChange}
       />
 
       {activeTag && (
@@ -124,25 +212,82 @@ export function Library() {
               ))}
             </div>
 
-            {pagination && pagination.totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40 hover:border-neutral-700"
-                >
-                  上一页
-                </button>
-                <span className="text-sm text-neutral-400">
-                  {page} / {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                  disabled={page >= pagination.totalPages}
-                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40 hover:border-neutral-700"
-                >
-                  下一页
-                </button>
+            {pagination && (isRandom || pagination.totalPages > 1) && (
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                {isRandom ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleRandom}
+                      className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
+                    >
+                      <Shuffle size={16} /> 换一批
+                    </button>
+                    <button
+                      onClick={clearRandom}
+                      className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-400 hover:border-neutral-700"
+                    >
+                      退出随机
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => handlePageChange(Math.max(1, page - 1))}
+                        disabled={page <= 1}
+                        className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40 hover:border-neutral-700"
+                      >
+                        上一页
+                      </button>
+                      {pageRange.map((p, idx) =>
+                        p === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-neutral-500">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => handlePageChange(Number(p))}
+                            disabled={p === page}
+                            className={`min-w-[2.25rem] rounded-md border px-3 py-1.5 text-sm ${
+                              p === page
+                                ? 'border-blue-500/30 bg-blue-500/20 text-blue-300'
+                                : 'border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                      <button
+                        onClick={() => handlePageChange(Math.min(pagination.totalPages, page + 1))}
+                        disabled={page >= pagination.totalPages}
+                        className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40 hover:border-neutral-700"
+                      >
+                        下一页
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-sm text-neutral-400">
+                      <span>跳转</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        defaultValue={page}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const value = Number((e.target as HTMLInputElement).value.replace(/[^0-9]/g, ''))
+                            if (value) {
+                              handlePageChange(Math.max(1, Math.min(pagination.totalPages, value)))
+                            }
+                          }
+                        }}
+                        className="w-14 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-center text-neutral-200 outline-none"
+                      />
+                      <span>/ {pagination.totalPages}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </>

@@ -13,11 +13,8 @@ export function ScanButton() {
       const res = await client.api.mangas.scan.post()
       if (res.error) throw new Error(String(res.error.value))
       return res.data as {
-        total: number
-        added: number
-        updated: number
-        removed: number
-        errors: string[]
+        started: boolean
+        message?: string
       }
     },
     onSuccess: () => {
@@ -77,11 +74,7 @@ export function ScanButton() {
 
           {mutation.isSuccess && (
             <div className="mt-3 rounded border border-green-500/20 bg-green-500/10 p-2 text-xs text-green-300">
-              <p>扫描完成：共 {mutation.data.total} 本</p>
-              <p>新增 {mutation.data.added} / 更新 {mutation.data.updated} / 移除 {mutation.data.removed}</p>
-              {mutation.data.errors.length > 0 && (
-                <p className="mt-1 text-red-300">错误 {mutation.data.errors.length} 条</p>
-              )}
+              {mutation.data.message || '扫描任务已启动'}
             </div>
           )}
 

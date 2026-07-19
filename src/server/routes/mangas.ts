@@ -1,12 +1,12 @@
 import { unlink } from 'node:fs/promises'
 import { Elysia, t } from 'elysia'
-import { eq, and, or, like, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, or, like, desc, asc, sql, SQL } from 'drizzle-orm'
 import { db } from '../db.ts'
 import { mangas } from '../schema.ts'
 import { openZipForPage } from '../lib/zip.ts'
 import { readCover } from '../lib/cover.ts'
 import { buildTagMeta } from '../lib/tags.ts'
-import { scanLibrary } from '../lib/scan.ts'
+import { runScanOnce } from '../lib/scan.ts'
 
 const SORT_FIELDS = [
   'date',
@@ -65,12 +65,20 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         return { error: 'LIBRARY_PATH environment variable is not configured' }
       }
 
-      try {
-        const summary = await scanLibrary(libraryPath)
-        return summary
-      } catch (e) {
-        set.status = 400
-        return { error: e instanceof Error ? e.message : String(e) }
+      const result = await runScanOnce(libraryPath, (summary) => {
+        console.log(
+          `[scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
+        )
+      })
+
+      if (!result.started) {
+        set.status = result.message?.includes('进行中') ? 409 : 400
+        return { error: result.message || 'Scan failed' }
+      }
+
+      return {
+        started: true,
+        message: result.message
       }
     }
   )
@@ -152,6 +160,67 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         sortBy: t.Optional(t.String()),
         sortOrder: t.Optional(t.Union([t.Literal('asc'), t.Literal('desc')])),
         includeHidden: t.Optional(t.String())
+      })
+    }
+  )
+  .get(
+    '/random',
+    async ({ query }) => {
+      const pageSize = Math.min(48, Math.max(1, Number(query.pageSize) || 24))
+      const conditions: (SQL<unknown> | undefined)[] = [eq(mangas.exist, true)]
+      if (query.q) {
+        conditions.push(
+          or(
+            like(mangas.title, `%${query.q}%`),
+            like(mangas.titleJpn, `%${query.q}%`),
+            like(mangas.tags, `%${query.q}%`)
+          )
+        )
+      }
+      if (query.category) conditions.push(like(mangas.category, query.category))
+      if (query.tag) conditions.push(like(mangas.tags, `%${query.tag}%`))
+
+      const where = and(...conditions.filter((c): c is SQL<unknown> => Boolean(c)))
+      const totalResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(mangas)
+        .where(where)
+      const total = totalResult[0]?.count || 0
+
+      if (total === 0) {
+        return {
+          items: [],
+          pagination: { page: 1, pageSize, total: 0, totalPages: 0 }
+        }
+      }
+
+      const maxOffset = Math.max(0, total - pageSize)
+      const offset = Math.floor(Math.random() * (maxOffset + 1))
+
+      const items = await db
+        .select()
+        .from(mangas)
+        .where(where)
+        .orderBy(sql`RANDOM()`)
+        .limit(pageSize)
+        .offset(offset)
+
+      const itemsWithMeta = items.map((item) => ({
+        ...item,
+        tagMeta: buildTagMeta(item.tags)
+      }))
+
+      return {
+        items: itemsWithMeta,
+        pagination: { page: 1, pageSize, total, totalPages: 1 }
+      }
+    },
+    {
+      query: t.Object({
+        pageSize: t.Optional(t.String()),
+        q: t.Optional(t.String()),
+        category: t.Optional(t.String()),
+        tag: t.Optional(t.String())
       })
     }
   )
