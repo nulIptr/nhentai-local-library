@@ -114,20 +114,28 @@ export interface ScanSummary {
   errors: string[]
 }
 
-export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
+export interface ScanOptions {
+  forceFull?: boolean
+}
+
+export async function scanLibrary(libraryPath: string, options: ScanOptions = {}): Promise<ScanSummary> {
+  const { forceFull = false } = options
   const resolvedLibrary = resolve(libraryPath)
   if (!existsSync(resolvedLibrary)) {
     throw new Error(`Library path does not exist: ${libraryPath}`)
   }
 
-  const files = discoverZipFiles(resolvedLibrary)
-  const summary: ScanSummary = { total: files.length, added: 0, updated: 0, removed: 0, errors: [] }
+  const allFiles = discoverZipFiles(resolvedLibrary)
 
   const existingRows = await db
     .select({ id: mangas.id, filepath: mangas.filepath, coverPath: mangas.coverPath, bundleSize: mangas.bundleSize, mtime: mangas.mtime })
     .from(mangas)
 
   const existingByPath = new Map(existingRows.map((r) => [r.filepath!, r]))
+
+  // 默认排除已在数据库中的文件；强制全量扫描时处理所有文件
+  const files = forceFull ? allFiles : allFiles.filter((filepath) => !existingByPath.has(filepath))
+  const summary: ScanSummary = { total: files.length, added: 0, updated: 0, removed: 0, errors: [] }
   const discoveredPaths = new Set(files)
 
   await runWithConcurrency(files, 2, async (filepath) => {
@@ -141,7 +149,7 @@ export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
       }
 
       const existing = existingByPath.get(filepath)
-      if (existing) {
+      if (existing && forceFull) {
         const coverMissing = !existing.coverPath || !existsSync(existing.coverPath)
         const unchanged =
           existing.bundleSize === Number(stat.size) &&
@@ -169,7 +177,7 @@ export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
             .where(eq(mangas.id, existing.id))
           summary.updated++
         }
-      } else {
+      } else if (!existing) {
         const extracted = await extractCover(filepath, names)
         const coverPath = extracted?.coverPath
         if (!coverPath) {
@@ -202,27 +210,29 @@ export async function scanLibrary(libraryPath: string): Promise<ScanSummary> {
     }
   })
 
-  const removedIds = existingRows
-    .filter((r) => {
-      if (!r.filepath) return false
-      // 仅当记录在本次扫描目录范围内且未被发现时，才标记为不存在
-      if (!r.filepath.startsWith(resolvedLibrary)) return false
-      return !discoveredPaths.has(r.filepath)
-    })
-    .map((r) => r.id)
+  if (forceFull) {
+    const removedIds = existingRows
+      .filter((r) => {
+        if (!r.filepath) return false
+        // 仅当记录在本次扫描目录范围内且未被发现时，才标记为不存在
+        if (!r.filepath.startsWith(resolvedLibrary)) return false
+        return !discoveredPaths.has(r.filepath)
+      })
+      .map((r) => r.id)
 
-  if (removedIds.length > 0) {
-    await db.update(mangas).set({ exist: false }).where(inArray(mangas.id, removedIds))
-    summary.removed = removedIds.length
+    if (removedIds.length > 0) {
+      await db.update(mangas).set({ exist: false }).where(inArray(mangas.id, removedIds))
+      summary.removed = removedIds.length
+    }
+
+    // 清理未再被任何漫画记录引用的封面缓存文件
+    const referencedCoverPaths = new Set(
+      (await db.select({ coverPath: mangas.coverPath }).from(mangas))
+        .map((r) => r.coverPath)
+        .filter(Boolean) as string[]
+    )
+    cleanupOrphanCovers(referencedCoverPaths)
   }
-
-  // 清理未再被任何漫画记录引用的封面缓存文件
-  const referencedCoverPaths = new Set(
-    (await db.select({ coverPath: mangas.coverPath }).from(mangas))
-      .map((r) => r.coverPath)
-      .filter(Boolean) as string[]
-  )
-  cleanupOrphanCovers(referencedCoverPaths)
 
   return summary
 }
@@ -231,13 +241,14 @@ let isScanning = false
 
 export function runScanOnce(
   libraryPath: string,
+  options: ScanOptions = {},
   onComplete?: (summary: ScanSummary) => void
 ): Promise<{ started: boolean; message?: string }> {
   if (isScanning) {
     return Promise.resolve({ started: false, message: '已有扫描任务正在进行中' })
   }
   isScanning = true
-  scanLibrary(libraryPath)
+  scanLibrary(libraryPath, options)
     .then((summary) => {
       onComplete?.(summary)
     })

@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useLocation, useSearch } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
-import { Shuffle, BarChart3 } from 'lucide-react'
+import { Shuffle, BarChart3, Settings } from 'lucide-react'
 import { client } from '../api'
 import { SearchFilter } from '../components/SearchFilter'
 import { MangaCard } from '../components/MangaCard'
 import { MangaDetail } from '../components/MangaDetail'
-import { ScanButton } from '../components/ScanButton'
 import type { Manga, SortField } from '../types'
 
 const PAGE_SIZE = 24
@@ -170,7 +169,12 @@ export function Library() {
           >
             <Shuffle size={16} /> 随便看看
           </button>
-          <ScanButton />
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
+          >
+            <Settings size={16} /> 设置
+          </button>
         </div>
       </header>
 

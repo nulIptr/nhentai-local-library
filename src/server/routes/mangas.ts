@@ -83,18 +83,23 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
   )
   .post(
     '/scan',
-    async ({ set }) => {
+    async ({ body, set }) => {
       const libraryPath = process.env.LIBRARY_PATH
       if (!libraryPath) {
         set.status = 400
         return { error: 'LIBRARY_PATH environment variable is not configured' }
       }
 
-      const result = await runScanOnce(libraryPath, (summary) => {
-        console.log(
-          `[scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
-        )
-      })
+      const forceFull = body.force === true
+      const result = await runScanOnce(
+        libraryPath,
+        { forceFull },
+        (summary) => {
+          console.log(
+            `[scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
+          )
+        }
+      )
 
       if (!result.started) {
         set.status = result.message?.includes('进行中') ? 409 : 400
@@ -105,6 +110,11 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         started: true,
         message: result.message
       }
+    },
+    {
+      body: t.Object({
+        force: t.Optional(t.Boolean())
+      })
     }
   )
   .get(

@@ -30,14 +30,18 @@ startAutoRefresh()
 const libraryPath = process.env.LIBRARY_PATH
 if (libraryPath) {
   console.log(`[auto-scan] Starting background scan of ${libraryPath}`)
-  runScanOnce(libraryPath, (summary) => {
-    console.log(
-      `[auto-scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
-    )
-    if (summary.errors.length > 0) {
-      console.error(`[auto-scan] Errors:`, summary.errors)
+  runScanOnce(
+    libraryPath,
+    { forceFull: false },
+    (summary) => {
+      console.log(
+        `[auto-scan] Done: total=${summary.total}, added=${summary.added}, updated=${summary.updated}, removed=${summary.removed}`
+      )
+      if (summary.errors.length > 0) {
+        console.error(`[auto-scan] Errors:`, summary.errors)
+      }
     }
-  }).then((result) => {
+  ).then((result) => {
     if (!result.started) {
       console.warn('[auto-scan] Skipped:', result.message)
     }
