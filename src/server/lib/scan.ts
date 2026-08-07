@@ -5,7 +5,8 @@ import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '../db.ts'
 import { mangas } from '../schema.ts'
-import { listZipImageNames, openZipForPage } from './zip.ts'
+import { readZipContents } from './zip.ts'
+import type { ArchiveMetadata, ZipPageResult } from './zip.ts'
 
 const ZIP_EXTS = new Set(['.zip', '.cbz'])
 const COVER_DIR = join(process.cwd(), 'data', 'covers')
@@ -45,28 +46,13 @@ function ensureCoverDir() {
   }
 }
 
-async function extractCover(zipPath: string, names?: string[]): Promise<{ coverPath: string; coverHash?: string } | null> {
+function saveCover(page: ZipPageResult): { coverPath: string } {
   ensureCoverDir()
-  let imageNames = names
-  if (!imageNames) {
-    try {
-      imageNames = await listZipImageNames(zipPath)
-    } catch {
-      return null
-    }
-  }
-  if (imageNames.length === 0) return null
-
-  try {
-    const { buffer, entryName } = await openZipForPage(zipPath, 0)
-    const ext = extname(entryName).toLowerCase() || '.jpg'
-    const id = randomUUID()
-    const coverPath = join(COVER_DIR, `${id}${ext}`)
-    writeFileSync(coverPath, buffer)
-    return { coverPath }
-  } catch {
-    return null
-  }
+  const ext = extname(page.entryName).toLowerCase() || '.jpg'
+  const id = randomUUID()
+  const coverPath = join(COVER_DIR, `${id}${ext}`)
+  writeFileSync(coverPath, page.buffer)
+  return { coverPath }
 }
 
 async function runWithConcurrency<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
@@ -118,6 +104,18 @@ export interface ScanOptions {
   forceFull?: boolean
 }
 
+function archiveMetadataValues(metadata: ArchiveMetadata | undefined): Partial<typeof mangas.$inferInsert> {
+  if (!metadata) return {}
+  return {
+    ...(metadata.title ? { title: metadata.title } : {}),
+    ...(metadata.titleJpn ? { titleJpn: metadata.titleJpn } : {}),
+    ...(metadata.category ? { category: metadata.category } : {}),
+    ...(metadata.url ? { url: metadata.url } : {}),
+    ...(metadata.tags ? { tags: metadata.tags } : {}),
+    status: 'tagged'
+  }
+}
+
 export async function scanLibrary(libraryPath: string, options: ScanOptions = {}): Promise<ScanSummary> {
   const { forceFull = false } = options
   const resolvedLibrary = resolve(libraryPath)
@@ -141,49 +139,42 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
   await runWithConcurrency(files, 2, async (filepath) => {
     try {
       const stat = statSync(filepath)
-      const names = await listZipImageNames(filepath)
+      const existing = existingByPath.get(filepath)
+      const needsCover = !existing || !existing.coverPath || !existsSync(existing.coverPath)
+      const { imageNames: names, metadata, cover } = await readZipContents(filepath, {
+        pageIndex: needsCover ? 0 : undefined,
+        readMetadata: true
+      })
       const pageCount = names.length
       if (pageCount === 0) {
         summary.errors.push(`No images in ${filepath}`)
         return
       }
 
-      const existing = existingByPath.get(filepath)
       if (existing && forceFull) {
-        const coverMissing = !existing.coverPath || !existsSync(existing.coverPath)
-        const unchanged =
-          existing.bundleSize === Number(stat.size) &&
-          existing.mtime === stat.mtime.toISOString() &&
-          !coverMissing
-        if (unchanged) {
-          await db.update(mangas).set({ exist: true }).where(eq(mangas.id, existing.id))
-          summary.updated++
-        } else {
-          let coverPath = existing.coverPath
-          if (coverMissing) {
-            const extracted = await extractCover(filepath, names)
-            coverPath = extracted?.coverPath ?? null
-          }
-          await db
-            .update(mangas)
-            .set({
-              pageCount,
-              bundleSize: Number(stat.size),
-              mtime: stat.mtime.toISOString(),
-              coverPath,
-              exist: true,
-              updatedAt: new Date().toISOString()
-            })
-            .where(eq(mangas.id, existing.id))
-          summary.updated++
+        let coverPath = existing.coverPath
+        if (needsCover) {
+          coverPath = cover ? saveCover(cover).coverPath : null
         }
+        await db
+          .update(mangas)
+          .set({
+            pageCount,
+            bundleSize: Number(stat.size),
+            mtime: stat.mtime.toISOString(),
+            coverPath,
+            exist: true,
+            updatedAt: new Date().toISOString(),
+            ...archiveMetadataValues(metadata)
+          })
+          .where(eq(mangas.id, existing.id))
+        summary.updated++
       } else if (!existing) {
-        const extracted = await extractCover(filepath, names)
-        const coverPath = extracted?.coverPath
-        if (!coverPath) {
+        if (!cover) {
           summary.errors.push(`Failed to extract cover for ${filepath}`)
           return
         }
+        const coverPath = saveCover(cover).coverPath
         const now = new Date().toISOString()
         await db.insert(mangas).values({
           id: randomUUID(),
@@ -200,6 +191,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
           currentPage: 0,
           hiddenBook: false,
           mark: false,
+          ...archiveMetadataValues(metadata),
           createdAt: now,
           updatedAt: now
         })
