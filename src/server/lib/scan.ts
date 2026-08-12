@@ -1,5 +1,5 @@
 import { readdirSync, statSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import type { Dirent } from 'node:fs'
+import type { Dirent, Stats } from 'node:fs'
 import { basename, extname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
@@ -116,6 +116,11 @@ function archiveMetadataValues(metadata: ArchiveMetadata | undefined): Partial<t
   }
 }
 
+function getFileCreatedAt(stat: Stats): number {
+  const createdAt = Number(stat.birthtimeMs)
+  return Number.isFinite(createdAt) && createdAt > 0 ? Math.trunc(createdAt) : Math.trunc(stat.mtimeMs)
+}
+
 export async function scanLibrary(libraryPath: string, options: ScanOptions = {}): Promise<ScanSummary> {
   const { forceFull = false } = options
   const resolvedLibrary = resolve(libraryPath)
@@ -139,6 +144,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
   await runWithConcurrency(files, 2, async (filepath) => {
     try {
       const stat = statSync(filepath)
+      const date = getFileCreatedAt(stat)
       const existing = existingByPath.get(filepath)
       const needsCover = !existing || !existing.coverPath || !existsSync(existing.coverPath)
       const { imageNames: names, metadata, cover } = await readZipContents(filepath, {
@@ -162,6 +168,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
             pageCount,
             bundleSize: Number(stat.size),
             mtime: stat.mtime.toISOString(),
+            date,
             coverPath,
             exist: true,
             updatedAt: new Date().toISOString(),
@@ -185,6 +192,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
           pageCount,
           bundleSize: Number(stat.size),
           mtime: stat.mtime.toISOString(),
+          date,
           status: 'non-tag',
           exist: true,
           readCount: 0,
