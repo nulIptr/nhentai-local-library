@@ -418,6 +418,9 @@ export function Reader() {
           mangaId={manga.id}
           onClose={() => setShowDetail(false)}
           onRead={() => setShowDetail(false)}
+          onTagClick={(namespace, tag) => {
+            window.open(`/?tag=${encodeURIComponent(`${namespace}:${tag}`)}`, '_blank', 'noopener')
+          }}
         />
       )}
     </div>
