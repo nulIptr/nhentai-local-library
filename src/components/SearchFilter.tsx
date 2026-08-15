@@ -18,7 +18,6 @@ const SORT_LABELS: Record<SortField, string> = {
   createdAt: '记录时间',
   updatedAt: '修改时间',
   uploadDate: '发布时间',
-  posted: '发布时间',
   rating: '评分',
   readCount: '阅读次数',
   bundleSize: '文件大小',

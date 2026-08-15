@@ -96,7 +96,6 @@ export type SortField =
   | 'createdAt'
   | 'updatedAt'
   | 'uploadDate'
-  | 'posted'
   | 'rating'
   | 'readCount'
   | 'bundleSize'
