@@ -10,8 +10,10 @@ import { buildTagMeta, NAMESPACE_ALIASES } from '../lib/tags.ts'
 import { runScanOnce } from '../lib/scan.ts'
 
 const SORT_FIELDS = [
-  'date',
   'mtime',
+  'createdAt',
+  'updatedAt',
+  'uploadDate',
   'posted',
   'rating',
   'readCount',
@@ -28,10 +30,14 @@ function isSortField(value: string): value is SortField {
 
 function toOrderBy(field: SortField, order: 'asc' | 'desc') {
   const col =
-    field === 'date'
-      ? mangas.date
-      : field === 'mtime'
-        ? mangas.mtime
+    field === 'mtime'
+      ? mangas.mtime
+      : field === 'createdAt'
+        ? mangas.createdAt
+        : field === 'updatedAt'
+          ? mangas.updatedAt
+          : field === 'uploadDate'
+            ? mangas.uploadDate
         : field === 'posted'
           ? mangas.posted
           : field === 'rating'
@@ -125,7 +131,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       const q = (query.q || '').trim()
       const category = (query.category || '').trim()
       const tag = (query.tag || '').trim()
-      const sortBy: SortField = isSortField(query.sortBy || '') ? (query.sortBy as SortField) : 'date'
+      const sortBy: SortField = isSortField(query.sortBy || '') ? (query.sortBy as SortField) : 'createdAt'
       const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc'
       const includeHidden = query.includeHidden === 'true'
 
@@ -347,7 +353,6 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
         .update(mangas)
         .set({
           readCount: (rows[0].readCount || 0) + 1,
-          mtime: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         })
         .where(eq(mangas.id, params.id))
@@ -370,7 +375,7 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
 
       await db
         .update(mangas)
-        .set({ rating: body.rating, mtime: new Date().toISOString() })
+        .set({ rating: body.rating, updatedAt: new Date().toISOString() })
         .where(eq(mangas.id, params.id))
 
       const updated = await db.select().from(mangas).where(eq(mangas.id, params.id)).limit(1)
@@ -397,7 +402,6 @@ export const mangaRoutes = new Elysia({ prefix: '/api/mangas' })
       if (typeof body.currentPage === 'number') update.currentPage = Math.max(0, body.currentPage)
 
       if (Object.keys(update).length > 0) {
-        update.mtime = new Date().toISOString()
         update.updatedAt = new Date().toISOString()
         await db.update(mangas).set(update).where(eq(mangas.id, params.id))
       }

@@ -1,5 +1,5 @@
 import { readdirSync, statSync, existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import type { Dirent, Stats } from 'node:fs'
+import type { Dirent } from 'node:fs'
 import { basename, extname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
@@ -7,6 +7,7 @@ import { db } from '../db.ts'
 import { mangas } from '../schema.ts'
 import { readZipContents } from './zip.ts'
 import type { ArchiveMetadata, ZipPageResult } from './zip.ts'
+import { resolveFileTime } from './time.ts'
 
 const ZIP_EXTS = new Set(['.zip', '.cbz'])
 const COVER_DIR = join(process.cwd(), 'data', 'covers')
@@ -112,17 +113,14 @@ function archiveMetadataValues(metadata: ArchiveMetadata | undefined): Partial<t
     ...(metadata.category ? { category: metadata.category } : {}),
     ...(metadata.url ? { url: metadata.url } : {}),
     ...(metadata.tags ? { tags: metadata.tags } : {}),
+    ...(metadata.uploadDate ? { uploadDate: metadata.uploadDate } : {}),
     status: 'tagged'
   }
 }
 
-function getFileCreatedAt(stat: Stats): number {
-  const createdAt = Number(stat.birthtimeMs)
-  return Number.isFinite(createdAt) && createdAt > 0 ? Math.trunc(createdAt) : Math.trunc(stat.mtimeMs)
-}
-
 export async function scanLibrary(libraryPath: string, options: ScanOptions = {}): Promise<ScanSummary> {
   const { forceFull = false } = options
+  const scannedAt = new Date().toISOString()
   const resolvedLibrary = resolve(libraryPath)
   if (!existsSync(resolvedLibrary)) {
     throw new Error(`Library path does not exist: ${libraryPath}`)
@@ -144,7 +142,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
   await runWithConcurrency(files, 2, async (filepath) => {
     try {
       const stat = statSync(filepath)
-      const date = getFileCreatedAt(stat)
+      const fileTime = resolveFileTime(Number(stat.birthtimeMs), Number(stat.mtimeMs), scannedAt)
       const existing = existingByPath.get(filepath)
       const needsCover = !existing || !existing.coverPath || !existsSync(existing.coverPath)
       const { imageNames: names, metadata, cover } = await readZipContents(filepath, {
@@ -167,11 +165,10 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
           .set({
             pageCount,
             bundleSize: Number(stat.size),
-            mtime: stat.mtime.toISOString(),
-            date,
+            mtime: fileTime,
             coverPath,
             exist: true,
-            updatedAt: new Date().toISOString(),
+            updatedAt: scannedAt,
             ...archiveMetadataValues(metadata)
           })
           .where(eq(mangas.id, existing.id))
@@ -191,8 +188,7 @@ export async function scanLibrary(libraryPath: string, options: ScanOptions = {}
           type: 'zip',
           pageCount,
           bundleSize: Number(stat.size),
-          mtime: stat.mtime.toISOString(),
-          date,
+          mtime: fileTime,
           status: 'non-tag',
           exist: true,
           readCount: 0,

@@ -25,9 +25,9 @@ function formatBytes(bytes: number | null | undefined) {
   return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
-function formatDate(ts: number | string | null | undefined) {
+function formatDate(ts: string | null | undefined) {
   if (!ts) return '-'
-  const d = typeof ts === 'number' ? new Date(ts) : new Date(ts)
+  const d = new Date(ts)
   return isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN')
 }
 
@@ -169,8 +169,20 @@ export function MangaDetail({ mangaId, onClose, onRead, onTagClick }: MangaDetai
                 {manga.status || '-'}
               </div>
               <div>
-                <span className="text-neutral-500">入库时间：</span>
-                {formatDate(manga.date)}
+                <span className="text-neutral-500">文件时间：</span>
+                {formatDate(manga.mtime)}
+              </div>
+              <div>
+                <span className="text-neutral-500">记录时间：</span>
+                {formatDate(manga.createdAt)}
+              </div>
+              <div>
+                <span className="text-neutral-500">修改时间：</span>
+                {formatDate(manga.updatedAt)}
+              </div>
+              <div>
+                <span className="text-neutral-500">发布时间：</span>
+                {formatDate(manga.uploadDate)}
               </div>
             </div>
 

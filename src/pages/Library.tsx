@@ -41,7 +41,7 @@ export function Library() {
 
   const q = params.get('q') || ''
   const category = params.get('category') || ''
-  const sortBy = (params.get('sortBy') as SortField) || 'date'
+  const sortBy = (params.get('sortBy') as SortField) || 'createdAt'
   const sortOrder = (params.get('sortOrder') as 'asc' | 'desc') || 'desc'
   const page = Math.max(1, Number(params.get('page') || '1'))
   const activeTag = params.get('tag') || ''

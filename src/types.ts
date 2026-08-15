@@ -59,7 +59,7 @@ export interface Manga {
   mtime: string | null
   coverHash: string | null
   status: string | null
-  date: number | null
+  date: string | null
   rating: number | null
   tags: TagMap | null
   filecount: number | null
@@ -73,6 +73,7 @@ export interface Manga {
   currentPage: number | null
   createdAt: string | null
   updatedAt: string | null
+  uploadDate: string | null
   exist: boolean | null
   tagMeta?: Record<string, Record<string, TagMetadata>> | null
 }
@@ -91,8 +92,10 @@ export type ReaderMode = 'single' | 'double' | 'scroll'
 export type FitMode = 'width' | 'height' | 'window'
 
 export type SortField =
-  | 'date'
   | 'mtime'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'uploadDate'
   | 'posted'
   | 'rating'
   | 'readCount'

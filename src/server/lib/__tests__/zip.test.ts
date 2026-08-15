@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { parseArchiveMetadata } from '../zip.ts'
+import { parseArchiveMetadata, parseUploadDate } from '../zip.ts'
 
 describe('parseArchiveMetadata', () => {
   it('unwraps gallery_info and normalizes its tags', () => {
@@ -59,5 +59,18 @@ describe('parseArchiveMetadata', () => {
     expect(parseArchiveMetadata({ gallery_info: { translated: true, tags: {} } })).toEqual({
       tags: { language: ['translated'] }
     })
+  })
+
+  it('parses gallery upload_date as a UTC ISO timestamp', () => {
+    expect(parseUploadDate([2023, 1, 9, 23, 51, 5])).toBe('2023-01-09T23:51:05.000Z')
+    expect(parseArchiveMetadata({ gallery_info: { upload_date: [2023, 1, 9, 23, 51, 5] } })).toEqual({
+      uploadDate: '2023-01-09T23:51:05.000Z'
+    })
+  })
+
+  it('rejects malformed upload_date values', () => {
+    expect(parseUploadDate([2023, 2, 29, 0, 0, 0])).toBeUndefined()
+    expect(parseUploadDate([2023, 1, 1])).toBeUndefined()
+    expect(parseUploadDate([2023, 1, 1, 0, 0, '0'])).toBeUndefined()
   })
 })

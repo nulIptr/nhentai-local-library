@@ -13,7 +13,7 @@ export const mangas = sqliteTable('Mangas', {
   mtime: text('mtime'),
   coverHash: text('coverHash'),
   status: text('status'),
-  date: integer('date'),
+  date: text('date'),
   rating: real('rating'),
   tags: text('tags', { mode: 'json' }).$type<Record<string, string[]>>(),
   filecount: integer('filecount'),
@@ -27,6 +27,7 @@ export const mangas = sqliteTable('Mangas', {
   currentPage: integer('currentPage').default(0),
   createdAt: text('createdAt'),
   updatedAt: text('updatedAt'),
+  uploadDate: text('upload_date'),
   exist: integer('exist', { mode: 'boolean' })
 })
 

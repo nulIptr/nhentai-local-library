@@ -24,6 +24,7 @@ export interface ArchiveMetadata {
   category?: string
   url?: string
   tags?: Record<string, string[]>
+  uploadDate?: string
 }
 
 export interface ZipContents {
@@ -77,6 +78,27 @@ function normalizeTags(value: unknown, translated: boolean): Record<string, stri
   return Object.keys(tags).length > 0 ? tags : undefined
 }
 
+export function parseUploadDate(value: unknown): string | undefined {
+  if (!Array.isArray(value) || value.length !== 6 || !value.every((part) => Number.isInteger(part))) return undefined
+  const [year, month, day, hour, minute, second] = value as number[]
+  if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+    return undefined
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour ||
+    date.getUTCMinutes() !== minute ||
+    date.getUTCSeconds() !== second
+  ) {
+    return undefined
+  }
+  return date.toISOString()
+}
+
 export function parseArchiveMetadata(value: unknown): ArchiveMetadata | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
 
@@ -91,7 +113,8 @@ export function parseArchiveMetadata(value: unknown): ArchiveMetadata | undefine
     titleJpn: nonEmptyString(source.title_title_original) ?? nonEmptyString(source.title_jpn),
     category: nonEmptyString(source.category),
     url: nonEmptyString(source.link) ?? nonEmptyString(source.url),
-    tags: normalizeTags(source.tags, source.translated === true)
+    tags: normalizeTags(source.tags, source.translated === true),
+    uploadDate: parseUploadDate(source.upload_date)
   }
 
   return Object.values(metadata).some(Boolean) ? metadata : undefined

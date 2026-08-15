@@ -14,8 +14,10 @@ interface SearchFilterProps {
 }
 
 const SORT_LABELS: Record<SortField, string> = {
-  date: '入库时间',
-  mtime: '修改时间',
+  mtime: '文件时间',
+  createdAt: '记录时间',
+  updatedAt: '修改时间',
+  uploadDate: '发布时间',
   posted: '发布时间',
   rating: '评分',
   readCount: '阅读次数',
