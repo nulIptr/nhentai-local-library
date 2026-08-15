@@ -34,6 +34,7 @@ export function aggregateTagData(
   const includeHidden = options.includeHidden ?? false
 
   const countMap = new Map<string, TagCount>()
+  const authorCountMap = new Map<string, number>()
   const namespaceCounts = new Map<string, Set<string>>()
   const perRowTagSets: Set<string>[] = []
   let taggedMangaCount = 0
@@ -47,10 +48,15 @@ export function aggregateTagData(
 
     taggedMangaCount++
     const rowTagSet = new Set<string>()
+    const rowAuthors = new Set<string>()
 
     for (const [ns, list] of Object.entries(tags)) {
       const items = Array.isArray(list) ? list : typeof list === 'string' ? list.split(/\s+/) : []
       const unique = new Set(items.filter(Boolean))
+
+      if (ns === 'artist') {
+        for (const artist of unique) rowAuthors.add(artist)
+      }
 
       for (const raw of unique) {
         const key = `${ns}:${raw}`
@@ -64,6 +70,10 @@ export function aggregateTagData(
         if (!namespaceCounts.has(ns)) namespaceCounts.set(ns, new Set())
         namespaceCounts.get(ns)!.add(raw)
       }
+    }
+
+    for (const artist of rowAuthors) {
+      authorCountMap.set(artist, (authorCountMap.get(artist) ?? 0) + 1)
     }
 
     perRowTagSets.push(rowTagSet)
@@ -82,6 +92,10 @@ export function aggregateTagData(
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
 
   const top = sorted.slice(0, limit)
+  const topAuthors = [...authorCountMap.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .slice(0, limit)
   const topKeys = new Set(top.map((t) => `${t.namespace}:${t.tag}`))
   const indexMap = new Map([...topKeys].map((k, i) => [k, i]))
   const n = top.length
@@ -120,6 +134,10 @@ export function aggregateTagData(
         count: t.count
       }
     }),
+    topAuthors: topAuthors.map((author) => ({
+      ...author,
+      name: translate('artist', author.tag)?.name
+    })),
     cooccurrence: {
       tags: top.map((t) => {
         const meta = translate(t.namespace, t.tag)

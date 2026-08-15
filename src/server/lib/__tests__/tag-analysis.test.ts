@@ -93,4 +93,44 @@ describe('aggregateTagData', () => {
     const result = aggregateTagData(rows, {}, fakeTranslate)
     expect(result.translationCoverage).toBe(1)
   })
+
+  it('groups author work counts once per manga and applies the result limit', () => {
+    const authorRows: TagAnalysisRow[] = [
+      ...rows,
+      {
+        id: '5',
+        tags: { artist: ['hiten', 'hiten', 'alice'] },
+        hiddenBook: false,
+        exist: true
+      },
+      {
+        id: '6',
+        tags: { artist: ['alice'] },
+        hiddenBook: true,
+        exist: true
+      },
+      {
+        id: '7',
+        tags: { artist: ['ignored'] },
+        hiddenBook: false,
+        exist: false
+      }
+    ]
+
+    expect(aggregateTagData(authorRows, { limit: 1 }, fakeTranslate).topAuthors).toEqual([
+      { tag: 'hiten', name: 'Hiten', count: 3 }
+    ])
+    expect(aggregateTagData(authorRows, { includeHidden: true }, fakeTranslate).topAuthors).toEqual([
+      { tag: 'hiten', name: 'Hiten', count: 3 },
+      { tag: 'alice', name: undefined, count: 2 }
+    ])
+  })
+
+  it('returns no authors when eligible works have no artist tags', () => {
+    const noAuthors = rows.map((row) => ({
+      ...row,
+      tags: row.tags ? { female: row.tags.female ?? [] } : row.tags
+    }))
+    expect(aggregateTagData(noAuthors, {}, fakeTranslate).topAuthors).toEqual([])
+  })
 })

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useLocation } from 'wouter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Search } from 'lucide-react'
+import { ArrowLeft, BarChart3, Search, Users } from 'lucide-react'
 import { client } from '../api'
+import { AuthorBarChart } from '../components/AuthorBarChart'
+import { NamespaceDonutChart } from '../components/NamespaceDonutChart'
 import { TagCloud } from '../components/TagCloud'
 import { TagBarChart } from '../components/TagBarChart'
 import { TagHeatmap } from '../components/TagHeatmap'
@@ -114,6 +116,10 @@ export function Tags() {
     handleTagClick(item.namespace, item.tag)
   }
 
+  const handleAuthorClick = (author: string) => {
+    handleTagClick('artist', author)
+  }
+
   const handleCellClick = (
     row: number,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -204,7 +210,11 @@ export function Tags() {
           </div>
         </div>
 
-        {isLoading && <div className="py-20 text-center text-neutral-500">加载中...</div>}
+        {isLoading && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="h-80 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />)}
+          </div>
+        )}
 
         {analysisError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-300">
@@ -220,18 +230,31 @@ export function Tags() {
               </div>
             ) : (
               <>
-                <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">标签云</h2>
-                  <TagCloud tags={tagMap} tagMeta={tagMetaForCloud} onTagClick={handleTagClick} />
-                </section>
+                <div className="grid gap-6 lg:grid-cols-5">
+                  <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 lg:col-span-3">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-neutral-200"><BarChart3 size={16} className="text-sky-300" />Top {limit} 标签</div>
+                    <TagBarChart data={filteredTopTags} onBarClick={handleBarClick} />
+                  </section>
+                  <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 lg:col-span-2">
+                    <div className="mb-1 text-sm font-medium text-neutral-200">命名空间占比</div>
+                    <p className="text-xs text-neutral-500">点击扇区筛选标签</p>
+                    <NamespaceDonutChart counts={analysis.namespaceCounts} onNamespaceClick={setNamespace} />
+                  </section>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-neutral-200"><Users size={16} className="text-orange-300" />作者作品分布</div>
+                    <AuthorBarChart data={analysis.topAuthors} onAuthorClick={handleAuthorClick} />
+                  </section>
+                  <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+                    <h2 className="mb-3 text-sm font-medium text-neutral-200">标签云</h2>
+                    <TagCloud tags={tagMap} tagMeta={tagMetaForCloud} onTagClick={handleTagClick} />
+                  </section>
+                </div>
 
                 <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">Top {limit} 标签</h2>
-                  <TagBarChart data={filteredTopTags} onBarClick={handleBarClick} />
-                </section>
-
-                <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">共现热力图</h2>
+                  <h2 className="mb-3 text-sm font-medium text-neutral-200">共现热力图</h2>
                   <TagHeatmap
                     tags={analysis.cooccurrence.tags}
                     matrix={analysis.cooccurrence.matrix}

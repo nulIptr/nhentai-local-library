@@ -1,12 +1,4 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import type { TagAnalysis } from '../types'
 
 interface TagBarChartProps {
@@ -48,11 +40,11 @@ export function TagBarChart({ data, onBarClick }: TagBarChartProps) {
               return [payload.count, payload.full]
             }}
           />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-            {chartData.map((_, index) => (
+          <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+            {chartData.map((item, index) => (
               <Cell
-                key={`cell-${index}`}
-                fill={`hsl(${(index * 25) % 360}, 70%, 55%)`}
+                key={item.full}
+                fill={`hsl(${(index * 31 + 190) % 360}, 78%, 58%)`}
                 cursor={onBarClick ? 'pointer' : 'default'}
                 onClick={() => onBarClick?.(chartData[index])}
               />

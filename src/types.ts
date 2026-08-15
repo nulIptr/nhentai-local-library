@@ -25,6 +25,11 @@ export interface TagAnalysis {
     intro?: string
     count: number
   }>
+  topAuthors: Array<{
+    tag: string
+    name?: string
+    count: number
+  }>
   cooccurrence: {
     tags: Array<{ namespace: string; tag: string; name?: string; intro?: string }>
     matrix: number[][]
