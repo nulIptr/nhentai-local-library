@@ -69,11 +69,11 @@ export function Library() {
   }
 
   const handleSortByChange = (value: SortField) => {
-    setParams({ sortBy: value })
+    setParams({ sortBy: value, random: undefined, page: 1 })
   }
 
   const handleSortOrderChange = (value: 'asc' | 'desc') => {
-    setParams({ sortOrder: value })
+    setParams({ sortOrder: value, random: undefined, page: 1 })
   }
 
   const handlePageChange = (newPage: number) => {
@@ -85,14 +85,6 @@ export function Library() {
     next.set('random', String(Date.now()))
     next.delete('page')
     navigate(`/?${next.toString()}`, { replace: true })
-  }
-
-  const clearRandom = () => {
-    const next = new URLSearchParams(search)
-    next.delete('random')
-    next.delete('page')
-    const qs = next.toString()
-    navigate(qs ? `/?${qs}` : '/', { replace: true })
   }
 
   const handleTagClick = (namespace: string, tag: string) => {
@@ -233,26 +225,10 @@ export function Library() {
               ))}
             </div>
 
-            {pagination && (isRandom || pagination.totalPages > 1) && (
+            {pagination && !isRandom && pagination.totalPages > 1 && (
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                {isRandom ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleRandom}
-                      className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-600"
-                    >
-                      <Shuffle size={16} /> 换一批
-                    </button>
-                    <button
-                      onClick={clearRandom}
-                      className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-400 hover:border-neutral-700"
-                    >
-                      退出随机
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
                       <button
                         onClick={() => handlePageChange(Math.max(1, page - 1))}
                         disabled={page <= 1}
@@ -287,9 +263,9 @@ export function Library() {
                       >
                         下一页
                       </button>
-                    </div>
+                  </div>
 
-                    <div className="flex items-center gap-1.5 text-sm text-neutral-400">
+                  <div className="flex items-center gap-1.5 text-sm text-neutral-400">
                       <span>跳转</span>
                       <input
                         type="text"
@@ -306,9 +282,8 @@ export function Library() {
                         className="w-14 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-center text-neutral-200 outline-none"
                       />
                       <span>/ {pagination.totalPages}</span>
-                    </div>
-                  </>
-                )}
+                  </div>
+                </>
               </div>
             )}
           </>

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ChevronFirst,
   ChevronLast,
+  Info,
   Settings2
 } from 'lucide-react'
 import { client } from '../api'
+import { MangaDetail } from '../components/MangaDetail'
 import { StarRating } from '../components/StarRating'
 import { ReaderCanvas } from '../components/ReaderCanvas'
 import { WebtoonScroller } from '../components/WebtoonScroller'
@@ -48,6 +49,7 @@ export function Reader() {
   const [currentPage, setCurrentPage] = useState(0)
   const [currentSpread, setCurrentSpread] = useState(0)
   const [showToolbar, setShowToolbar] = useState(true)
+  const [showDetail, setShowDetail] = useState(false)
 
   const { data: manga, isLoading } = useQuery({
     queryKey: ['manga', id],
@@ -250,13 +252,6 @@ export function Reader() {
       {showToolbar && (
         <div className="z-20 flex w-full flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-black/70 px-3 py-2 backdrop-blur sm:px-4">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => navigate('/')}
-              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
-              title="返回列表"
-            >
-              <ArrowLeft size={20} />
-            </button>
             <h1 className="max-w-[40vw] truncate text-xs text-neutral-200 sm:max-w-md sm:text-sm">
               {getPlaceholderTitle(manga)}
             </h1>
@@ -363,6 +358,13 @@ export function Reader() {
             )}
 
             <button
+              onClick={() => setShowDetail(true)}
+              className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
+              title="漫画详情"
+            >
+              <Info size={18} />
+            </button>
+            <button
               onClick={() => setShowToolbar((v) => !v)}
               className="rounded p-1.5 text-neutral-300 hover:bg-white/10"
             >
@@ -409,6 +411,14 @@ export function Reader() {
             <ChevronRight size={28} />
           </button>
         </>
+      )}
+
+      {showDetail && (
+        <MangaDetail
+          mangaId={manga.id}
+          onClose={() => setShowDetail(false)}
+          onRead={() => setShowDetail(false)}
+        />
       )}
     </div>
   )
