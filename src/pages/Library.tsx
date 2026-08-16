@@ -145,7 +145,7 @@ export function Library() {
   const pageRange = pagination ? getPaginationRange(page, pagination.totalPages) : []
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-app-viewport bg-neutral-950">
       <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
         <h1 className="text-lg font-semibold text-neutral-100">漫画图书馆</h1>
         <div className="flex items-center gap-2">

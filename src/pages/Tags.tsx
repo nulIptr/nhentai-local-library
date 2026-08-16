@@ -132,7 +132,7 @@ export function Tags() {
   const isLoading = analysisLoading || statusLoading
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-200">
+    <div className="min-h-app-viewport bg-neutral-950 text-neutral-200">
       <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
         <div className="flex items-center gap-3">
           <button

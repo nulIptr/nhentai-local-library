@@ -227,7 +227,7 @@ export function Reader() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-black text-neutral-400">
+      <div className="flex h-app-viewport w-full items-center justify-center bg-black text-neutral-400">
         加载中...
       </div>
     )
@@ -235,7 +235,7 @@ export function Reader() {
 
   if (!manga || !pageCount) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-black text-neutral-400">
+      <div className="flex h-app-viewport w-full flex-col items-center justify-center bg-black text-neutral-400">
         <p>漫画不存在或没有页面</p>
         <button onClick={() => navigate('/')} className="mt-4 text-blue-400 hover:underline">
           返回图书馆
@@ -246,7 +246,7 @@ export function Reader() {
 
   return (
     <div
-      className="flex h-screen w-full flex-col overflow-hidden bg-black"
+      className="flex h-app-viewport w-full flex-col overflow-hidden bg-black"
       onDoubleClick={() => setShowToolbar((v) => !v)}
     >
       {showToolbar && (
