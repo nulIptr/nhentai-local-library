@@ -1,0 +1,1 @@
+cd C:\open\emm-web\ && bun run start

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "emm-web",
+      "name": "nhentai-local-library",
       "dependencies": {
         "@elysiajs/cors": "^1.4.2",
         "@elysiajs/eden": "^1.4.9",
