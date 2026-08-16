@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, FolderSearch, Loader2, RotateCcw, Settings as SettingsIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  FolderSearch,
+  Loader2,
+  Power,
+  RotateCcw,
+  Settings as SettingsIcon
+} from 'lucide-react'
 import { client } from '../api'
 
 type ScanResult = {
@@ -9,10 +16,15 @@ type ScanResult = {
   message?: string
 }
 
+type ShutdownResult = {
+  message: string
+}
+
 export function Settings() {
   const [, navigate] = useLocation()
   const qc = useQueryClient()
   const [lastResult, setLastResult] = useState<ScanResult | null>(null)
+  const [shutdownMessage, setShutdownMessage] = useState<string | null>(null)
 
   const scanMutation = useMutation({
     mutationFn: async (force: boolean) => {
@@ -31,6 +43,27 @@ export function Settings() {
     if (scanMutation.isPending) return
     setLastResult(null)
     scanMutation.mutate(force)
+  }
+
+  const shutdownMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.api.system.shutdown.post()
+      if (res.error) {
+        const message = (res.error.value as { message?: string } | null)?.message
+        throw new Error(message || String(res.error.value))
+      }
+      return res.data as ShutdownResult
+    },
+    onSuccess: (data) => setShutdownMessage(data.message)
+  })
+
+  const handleShutdown = () => {
+    if (shutdownMutation.isPending) return
+    const confirmed = window.confirm('确定要关闭后端服务所在的计算机吗？未保存的数据可能会丢失。')
+    if (!confirmed) return
+
+    setShutdownMessage(null)
+    shutdownMutation.mutate()
   }
 
   return (
@@ -101,6 +134,40 @@ export function Settings() {
           {scanMutation.isSuccess && lastResult && (
             <div className="mt-4 rounded border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-300">
               {lastResult.message || '扫描任务已启动'}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-4 rounded-lg border border-red-500/30 bg-neutral-900 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Power size={18} className="text-red-400" />
+            <h2 className="text-base font-medium text-neutral-100">系统关机</h2>
+          </div>
+
+          <p className="mb-4 text-sm text-neutral-400">
+            此操作会关闭运行后端服务的计算机，并中断当前服务。
+          </p>
+
+          <button
+            onClick={handleShutdown}
+            disabled={shutdownMutation.isPending}
+            className="flex items-center justify-center gap-2 rounded-md border border-red-500/50 bg-red-500/15 px-4 py-2 text-sm text-red-300 hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {shutdownMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />}
+            关闭服务器计算机
+          </button>
+
+          {shutdownMessage && (
+            <div className="mt-4 rounded border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-300">
+              {shutdownMessage}
+            </div>
+          )}
+
+          {shutdownMutation.isError && (
+            <div className="mt-4 rounded border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+              {shutdownMutation.error instanceof Error
+                ? shutdownMutation.error.message
+                : String(shutdownMutation.error)}
             </div>
           )}
         </section>

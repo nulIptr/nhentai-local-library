@@ -9,6 +9,31 @@ const app = new Elysia()
   .use(cors())
   .use(mangaRoutes)
   .use(tagRoutes)
+  .post('/api/system/shutdown', ({ set }) => {
+    if (process.env.SYSTEM_SHUTDOWN_ENABLED !== 'true') {
+      set.status = 403
+      return {
+        message: '关机功能未启用。请在服务器环境变量中设置 SYSTEM_SHUTDOWN_ENABLED=true。'
+      }
+    }
+
+    // Give the HTTP response time to reach the browser before powering off the host.
+    setTimeout(() => {
+      const command = process.platform === 'win32' ? 'shutdown' : 'shutdown'
+      const args = process.platform === 'win32' ? ['/s', '/t', '3', '/f'] : ['-h', 'now']
+
+      try {
+        Bun.spawn([command, ...args], {
+          stdout: 'ignore',
+          stderr: 'ignore'
+        })
+      } catch (error) {
+        console.error('[system] Failed to start shutdown command:', error)
+      }
+    }, 250)
+
+    return { message: '已发送关机指令，服务器将在几秒后关闭。' }
+  })
   .get('/*', async ({ params }) => {
     // 生产环境：托管 Vite 构建产物，未匹配文件回退到 index.html（SPA）
     const requested = params['*'] || 'index.html'
