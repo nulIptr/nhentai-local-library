@@ -3,6 +3,7 @@ import { Bookmark, Eye, BookOpen } from 'lucide-react'
 import { StarRating } from './StarRating'
 import { client } from '../api'
 import { getPlaceholderCover, getPlaceholderTitle } from '../lib/placeholder'
+import { useReaderStore } from '../stores/readerStore'
 import type { Manga } from '../types'
 
 interface MangaCardProps {
@@ -14,6 +15,8 @@ interface MangaCardProps {
 export function MangaCard({ manga, onClick, onRead }: MangaCardProps) {
   const qc = useQueryClient()
   const title = getPlaceholderTitle(manga)
+  const getProgress = useReaderStore((s) => s.getProgress)
+  const currentPage = manga.currentPage ?? getProgress(manga.id)
 
   const rateMutation = useMutation({
     mutationFn: async (rating: number) => {
@@ -41,7 +44,7 @@ export function MangaCard({ manga, onClick, onRead }: MangaCardProps) {
         />
         {manga.pageCount ? (
           <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white backdrop-blur">
-            {manga.pageCount}P
+            {currentPage > 0 ? `${currentPage}/${manga.pageCount}P` : `${manga.pageCount}P`}
           </span>
         ) : null}
         <div className="absolute inset-x-0 bottom-0 flex gap-2 p-2 opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
